@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { Separator } from "@/components/ui/separator"
+import { ThemeToggle } from "@/components/theme-toggle"
 import {
   SidebarInset,
   SidebarProvider,
@@ -19,17 +20,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="h-4" />
-          <span className="text-sm font-medium text-muted-foreground">
-            CRM Broker
-          </span>
+        <header className="flex h-10 shrink-0 items-center justify-between gap-2 border-b px-3">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="h-4" />
+            <span className="text-xs font-medium text-muted-foreground">
+              CRM Broker
+            </span>
+          </div>
+          <ThemeToggle />
         </header>
-        <div className="p-6">{children}</div>
+        <div className="p-4">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   )

@@ -23,6 +23,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   CalculatorIcon,
+  ClockIcon,
+  FileTextIcon,
   HomeIcon,
   PlusIcon,
   Trash2Icon,
@@ -52,6 +54,8 @@ type Simulation = {
   entradaTaxaJuros: string
   intercaladaValue: string
   intercaladaInstallments: string
+  financiamentoInstallments: string
+  financiamentoParcelaValue?: string
 }
 
 type Imovel = {
@@ -139,6 +143,9 @@ export default function SimuladorPage() {
   const [intercaladaValue, setIntercaladaValue] = React.useState("")
   const [intercaladaInstallments, setIntercaladaInstallments] = React.useState("1")
   const [showSaveToast, setShowSaveToast] = React.useState(false)
+  const [financiamentoInstallments, setFinanciamentoInstallments] = React.useState("360")
+  const [editingFinanciamento, setEditingFinanciamento] = React.useState(false)
+  const [financiamentoParcelaValue, setFinanciamentoParcelaValue] = React.useState("")
   
   React.useEffect(() => {
     // Carregar simulações e empreendimentos do storage
@@ -229,6 +236,8 @@ export default function SimuladorPage() {
     setEntradaTaxaJuros(selectedSimulation.entradaTaxaJuros ?? "")
     setIntercaladaValue(selectedSimulation.intercaladaValue ?? "")
     setIntercaladaInstallments(selectedSimulation.intercaladaInstallments ?? "1")
+    setFinanciamentoInstallments(selectedSimulation.financiamentoInstallments ?? "360")
+    setFinanciamentoParcelaValue(selectedSimulation.financiamentoParcelaValue ?? "")
   }, [selectedSimulation])
   
   // Calculate summary values
@@ -299,6 +308,8 @@ export default function SimuladorPage() {
       entradaTaxaJuros,
       intercaladaValue,
       intercaladaInstallments,
+      financiamentoInstallments,
+      financiamentoParcelaValue,
     }
     const updatedHistory = [newSimulation, ...history]
     setHistory(updatedHistory)
@@ -338,6 +349,8 @@ export default function SimuladorPage() {
             entradaTaxaJuros,
             intercaladaValue,
             intercaladaInstallments,
+            financiamentoInstallments,
+            financiamentoParcelaValue,
           }
         : item
     )
@@ -362,6 +375,8 @@ export default function SimuladorPage() {
     setEntradaTaxaJuros("")
     setIntercaladaValue("")
     setIntercaladaInstallments("1")
+    setFinanciamentoInstallments("360")
+    setFinanciamentoParcelaValue("")
   }
 
   const handleDelete = (id: string) => {
@@ -372,16 +387,16 @@ export default function SimuladorPage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-6 lg:flex-row">
+    <div className="flex h-full flex-col gap-4 lg:flex-row">
       <aside className="w-full lg:w-64">
         <Card className="h-full">
-          <CardHeader>
-            <div className="space-y-1">
-              <CardTitle>Histórico</CardTitle>
-              <CardDescription>Fluxo de pagamento</CardDescription>
+          <CardHeader className="">
+            <div className="flex items-center gap-2">
+              <ClockIcon className="size-4" />
+              <CardTitle className="text-sm">Histórico</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2.5 pt-0">
             <div className="relative">
               <Input
                 placeholder="Pesquisar por nome"
@@ -613,19 +628,19 @@ export default function SimuladorPage() {
       </AlertDialog>
 
       {selectedSimulation ? (
-        <div className="flex w-full flex-col gap-6 lg:flex-row">
+        <div className="flex w-full flex-col gap-4 lg:flex-row">
           <Card className="w-full max-w-2xl">
-            <CardHeader>
+            <CardHeader className="pb-1">
               <div className="flex items-center gap-2">
-                <CalculatorIcon className="size-5" />
-                <CardTitle>Simulador de Financiamento</CardTitle>
+                <CalculatorIcon className="size-4" />
+                <CardTitle className="text-base">Simulador de Financiamento</CardTitle>
               </div>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 Preencha os dados para estimar o valor das parcelas.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-md border bg-muted/30 p-3">
+            <CardContent className="space-y-3 pt-2">
+              <div className="rounded-md border bg-muted/30 p-2.5">
                 <div className="flex items-center gap-2 text-sm">
                   <span className="font-medium">{selectedSimulation.principal}</span>
                   {selectedSimulation.proponentes && (
@@ -649,7 +664,7 @@ export default function SimuladorPage() {
                   <span className="font-medium">{selectedSimulation.valor}</span>
                 </div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="financiamento">Financiamento</Label>
                   <Input 
@@ -840,15 +855,32 @@ export default function SimuladorPage() {
           </Card>
 
           <Card className="w-full lg:w-80">
-            <CardHeader>
-              <CardTitle className="text-base">Resumo</CardTitle>
+            <CardHeader >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <FileTextIcon className="size-4" />
+                  <CardTitle className="text-sm">Resumo</CardTitle>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <span>{selectedSimulation.principal}</span>
+                  {selectedSimulation.proponentes && (
+                    <>
+                      <span>+</span>
+                      <UsersIcon className="size-3" />
+                      <span>{selectedSimulation.proponentes}</span>
+                    </>
+                  )}
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+            <CardContent className="space-y-2 pt-1">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Valor do imóvel</span>
-                  <span className="font-medium text-destructive">-{selectedSimulation.valor}</span>
+                  <span className="font-medium text-destructive">-R$ {selectedSimulation.valor}</span>
                 </div>
+              </div>
+              <div className="border-t pt-1.5 space-y-1.5">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Financiamento</span>
                   <span className="font-medium">{financiamento > 0 ? `+${formatCurrency(financiamento)}` : "—"}</span>
@@ -861,33 +893,117 @@ export default function SimuladorPage() {
                   <span className="text-muted-foreground">Subsídios</span>
                   <span className="font-medium">{totalSubsidios > 0 ? `+${formatCurrency(totalSubsidios)}` : "—"}</span>
                 </div>
+              </div>
+              <div className="border-t pt-1.5 space-y-1.5">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Desconto</span>
                   <span className="font-medium">{desconto > 0 ? `+${formatCurrency(desconto)}` : "—"}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Ato (Reserva)</span>
-                  <span className="font-medium">{ato > 0 ? `+${formatCurrency(ato)}` : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Residual (sinal)</span>
-                  <span className="font-medium">{residual > 0 ? `+${formatCurrency(residual)}` : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Entrada</span>
-                  <span className="font-medium">{entrada > 0 ? `+${formatCurrency(entrada)}` : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Intercalada</span>
-                  <span className="font-medium">{intercalada > 0 ? `+${formatCurrency(intercalada)}` : "—"}</span>
+              </div>
+              <div className="border-t pt-1.5">
+                <div className="flex items-center justify-between text-sm font-semibold">
+                  <span className="text-foreground">Recursos Próprios</span>
+                  <span className={totalRecursosProprios > 0 ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}>
+                    {totalRecursosProprios > 0 ? `+${formatCurrency(totalRecursosProprios)}` : "—"}
+                  </span>
                 </div>
               </div>
-              <div className="border-t pt-3">
-                <div className="rounded-md border border-dashed border-green-600 p-3">
-                  <div className="text-xs text-muted-foreground">Saldo</div>
-                  <div className={`mt-1 text-2xl font-bold ${saldo < 0 ? "text-destructive" : saldo > 0 ? "text-yellow-600" : "text-green-600"}`}>
-                    {formatCurrency(saldo)}
+              <div className="border-t pt-1.5">
+                <div className="rounded-md border border-dashed border-green-600 p-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Saldo</span>
+                    <span className={`text-lg font-bold ${saldo < 0 ? "text-destructive" : saldo > 0 ? "text-yellow-600" : "text-green-600"}`}>
+                      {formatCurrency(saldo)}
+                    </span>
                   </div>
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <div className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-2">
+                  <span>Parcelas</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+                <div className="space-y-1">
+                  {financiamento > 0 && (
+                    <div className="group">
+                      {editingFinanciamento ? (
+                        <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/20">
+                          <span className="text-xs font-medium text-amber-700 dark:text-amber-400 min-w-[120px]">Financiamento</span>
+                          <Input
+                            type="text"
+                            placeholder="R$ 0,00"
+                            value={financiamentoParcelaValue}
+                            onChange={(e) => setFinanciamentoParcelaValue(e.target.value)}
+                            className="h-7 flex-1 text-xs border-amber-300 focus-visible:ring-amber-500"
+                          />
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">360x</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                            onClick={() => setEditingFinanciamento(false)}
+                          >
+                            ✓
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/20 hover:border-amber-500/40 transition-colors">
+                          <span className="text-xs font-medium text-amber-700 dark:text-amber-400 min-w-[120px]">Financiamento</span>
+                          <span className="inline-flex items-center rounded-full bg-amber-500/20 px-1.5 py-0 text-xs font-medium text-amber-700 dark:text-amber-300">360×</span>
+                          <span className="w-32 text-left font-semibold text-xs text-amber-700 dark:text-amber-300">
+                            {financiamentoParcelaValue ? `R$ ${financiamentoParcelaValue}` : "a definir"}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                            onClick={() => setEditingFinanciamento(true)}
+                          >
+                            ✎
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {ato > 0 && (
+                    <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-green-500/10 to-green-500/5 border border-green-500/20 hover:border-green-500/40 transition-colors">
+                      <span className="text-xs font-medium text-green-700 dark:text-green-400 min-w-[120px]">Ato (Reserva)</span>
+                      <span className="inline-flex items-center rounded-full bg-green-500/20 px-1.5 py-0 text-xs font-medium text-green-700 dark:text-green-300">{atoInstallments.padStart(3, '0')}×</span>
+                      <span className="w-32 text-left font-semibold text-xs text-green-700 dark:text-green-300">{formatCurrency(ato / parseInt(atoInstallments || "1"))}</span>
+                      <span className="w-6" />
+                    </div>
+                  )}
+                  
+                  {residual > 0 && (
+                    <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-rose-500/10 to-rose-500/5 border border-rose-500/20 hover:border-rose-500/40 transition-colors">
+                      <span className="text-xs font-medium text-rose-700 dark:text-rose-400 min-w-[120px]">Residual (Sinal)</span>
+                      <span className="inline-flex items-center rounded-full bg-rose-500/20 px-1.5 py-0 text-xs font-medium text-rose-700 dark:text-rose-300">{residualInstallments.padStart(3, '0')}×</span>
+                      <span className="w-32 text-left font-semibold text-xs text-rose-700 dark:text-rose-300">{formatCurrency(residual / parseInt(residualInstallments || "1"))}</span>
+                      <span className="w-6" />
+                    </div>
+                  )}
+                  
+                  {entrada > 0 && (
+                    <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-blue-500/10 to-blue-500/5 border border-blue-500/20 hover:border-blue-500/40 transition-colors">
+                      <span className="text-xs font-medium text-blue-700 dark:text-blue-400 min-w-[120px]">Entrada</span>
+                      <span className="inline-flex items-center rounded-full bg-blue-500/20 px-1.5 py-0 text-xs font-medium text-blue-700 dark:text-blue-300">{entradaInstallments.padStart(3, '0')}×</span>
+                      <span className="w-32 text-left font-semibold text-xs text-blue-700 dark:text-blue-300">{formatCurrency(entrada / parseInt(entradaInstallments || "1"))}</span>
+                      <span className="w-6" />
+                    </div>
+                  )}
+                  
+                  {intercalada > 0 && (
+                    <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-purple-500/10 to-purple-500/5 border border-purple-500/20 hover:border-purple-500/40 transition-colors">
+                      <span className="text-xs font-medium text-purple-700 dark:text-purple-400 min-w-[120px]">Intercalada</span>
+                      <span className="inline-flex items-center rounded-full bg-purple-500/20 px-1.5 py-0 text-xs font-medium text-purple-700 dark:text-purple-300">{intercaladaInstallments.padStart(3, '0')}×</span>
+                      <span className="w-32 text-left font-semibold text-xs text-purple-700 dark:text-purple-300">{formatCurrency(parseCurrency(intercaladaValue))}</span>
+                      <span className="w-6" />
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
