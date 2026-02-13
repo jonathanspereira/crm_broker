@@ -428,6 +428,9 @@ export default function SimuladorPage() {
 
   const handleSaveSimulation = () => {
     if (!selectedSimulation) return
+    const nextEmpreendimento = empreendimento.trim() || selectedSimulation.empreendimento
+    const nextPavimento = pavimento.trim() || selectedSimulation.pavimento
+    const nextValor = valor ? normalizeCurrencyValue(valor) : selectedSimulation.valor
     const updatedHistory = history.map((item) =>
       item.id === selectedSimulation.id
         ? {
@@ -435,9 +438,9 @@ export default function SimuladorPage() {
             principal: selectedSimulation.principal,
             leadId: selectedSimulation.leadId,
             proponentes: selectedSimulation.proponentes,
-            empreendimento: selectedSimulation.empreendimento,
-            pavimento: selectedSimulation.pavimento,
-            valor: normalizeCurrencyValue(valor),
+            empreendimento: nextEmpreendimento,
+            pavimento: nextPavimento,
+            valor: nextValor,
             financiamentoValue: normalizeCurrencyValue(financiamentoValue),
             fgtsValue: normalizeCurrencyValue(fgtsValue),
             subsidioFederalValue: normalizeCurrencyValue(subsidioFederalValue),
@@ -480,6 +483,20 @@ export default function SimuladorPage() {
     setIntercaladaInstallments("1")
     setFinanciamentoInstallments("360")
     setFinanciamentoParcelaValue("")
+  }
+
+  const handleStartNewSimulation = () => {
+    setSelectedId(null)
+    setSelectedLeadId("")
+    setSearchLeadTerm("")
+    setShowLeadDropdown(false)
+    setHasMultipleProponents(false)
+    setProponentsList([""])
+    setEmpreendimento("")
+    setPavimento("")
+    setValor("")
+    handleClearValues()
+    setOpenNewSimulation(true)
   }
 
   const handleDelete = (id: string) => {
@@ -664,7 +681,9 @@ export default function SimuladorPage() {
           <CardFooter className="border-t">
             <AlertDialog open={openNewSimulation} onOpenChange={setOpenNewSimulation}>
               <AlertDialogTrigger asChild>
-                <Button className="w-full">Nova simulação</Button>
+                <Button className="w-full" onClick={handleStartNewSimulation}>
+                  Nova simulação
+                </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
