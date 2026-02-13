@@ -168,6 +168,7 @@ export default function SimuladorPage() {
   const [descontoValue, setDescontoValue] = React.useState("")
   const [atoValue, setAtoValue] = React.useState("")
   const [atoInstallments, setAtoInstallments] = React.useState("1")
+  const [atoAuto, setAtoAuto] = React.useState(true)
   const [residualValue, setResidualValue] = React.useState("")
   const [residualInstallments, setResidualInstallments] = React.useState("1")
   const [entradaValue, setEntradaValue] = React.useState("")
@@ -270,6 +271,7 @@ export default function SimuladorPage() {
   
   // Calculate summary values
   const valorImovel = selectedSimulation ? normalizeCurrencyValue(selectedSimulation.valor) : 0
+  const baseImovelValue = normalizeCurrencyValue(valor) || valorImovel
   const financiamento = normalizeCurrencyValue(financiamentoValue)
   const fgts = normalizeCurrencyValue(fgtsValue)
   const subsidioFederal = normalizeCurrencyValue(subsidioFederalValue)
@@ -281,6 +283,10 @@ export default function SimuladorPage() {
   const entradaTaxaPercentual = parseFloat(entradaTaxaJuros.replace(",", "."))
   const entradaComJuros = isNaN(entradaTaxaPercentual) || entradaTaxaPercentual === 0 ? entrada : entrada * Math.pow(1 + entradaTaxaPercentual / 100, parseInt(entradaInstallments || "1"))
   const intercalada = normalizeCurrencyValue(intercaladaValue) * parseInt(intercaladaInstallments || "1")
+  const atoPercent = baseImovelValue > 0 ? (ato / baseImovelValue) * 100 : 0
+  const atoPercentLabel = baseImovelValue > 0
+    ? atoPercent.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    : "0,0"
   
   const totalSubsidios = subsidioFederal + subsidioEstadual
   const totalRecursosProprios = ato + residual + entrada + intercalada
@@ -289,6 +295,12 @@ export default function SimuladorPage() {
   const filteredHistory = history.filter((item) =>
     item.principal.toLowerCase().includes(searchQuery.toLowerCase().trim())
   )
+
+  React.useEffect(() => {
+    if (!atoAuto || baseImovelValue <= 0) return
+    const defaultAtoValue = baseImovelValue * 0.025
+    setAtoValue(formatCurrencyValue(defaultAtoValue))
+  }, [atoAuto, baseImovelValue])
 
   const filteredLeads = leads.filter(lead =>
     lead.name.toLowerCase().includes(searchLeadTerm.toLowerCase()) ||
@@ -415,6 +427,7 @@ export default function SimuladorPage() {
     setEmpreendimento(simulation.empreendimento)
     setPavimento(simulation.pavimento)
     setValor(formatCurrencyValue(simulation.valor))
+    setAtoAuto(false)
 
     const proponents = simulation.proponentes
       ? simulation.proponentes.split(",").map((item) => item.trim()).filter(Boolean)
@@ -495,6 +508,7 @@ export default function SimuladorPage() {
     setEmpreendimento("")
     setPavimento("")
     setValor("")
+    setAtoAuto(true)
     handleClearValues()
     setOpenNewSimulation(true)
   }
@@ -1137,7 +1151,7 @@ export default function SimuladorPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="ato">Ato (Reserva)</Label>
+                    <Label htmlFor="ato">Ato (Reserva) {atoPercentLabel}%</Label>
                     {calculateInstallment(atoValue, atoInstallments) && (
                       <span className="text-xs text-muted-foreground">
                         {calculateInstallment(atoValue, atoInstallments)}
@@ -1150,7 +1164,10 @@ export default function SimuladorPage() {
                       placeholder="R$ 5.400" 
                       className="flex-1" 
                       value={atoValue}
-                      onChange={(e) => setAtoValue(formatCurrencyInput(e.target.value))}
+                      onChange={(e) => {
+                        setAtoAuto(false)
+                        setAtoValue(formatCurrencyInput(e.target.value))
+                      }}
                     />
                     <Select value={atoInstallments} onValueChange={setAtoInstallments}>
                       <SelectTrigger className="w-[100px]">
