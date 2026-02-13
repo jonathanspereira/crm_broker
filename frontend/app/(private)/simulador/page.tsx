@@ -927,7 +927,7 @@ export default function SimuladorPage() {
                     <Label htmlFor="new-lead-phone">Telefone</Label>
                     <Input
                       id="new-lead-phone"
-                      placeholder="Ex: (11) 9999-9999"
+                      placeholder="Ex: (XX) XXXX-XXXX"
                       value={newLeadPhone}
                       onChange={(e) => setNewLeadPhone(e.target.value)}
                     />
@@ -1117,7 +1117,7 @@ export default function SimuladorPage() {
                   <Label htmlFor="financiamento">Financiamento</Label>
                   <Input 
                     id="financiamento" 
-                    placeholder="R$ 130.000" 
+                    placeholder="R$ XXX.XXX" 
                     value={financiamentoValue}
                     onChange={(e) => setFinanciamentoValue(formatCurrencyInput(e.target.value))}
                   />
@@ -1126,7 +1126,7 @@ export default function SimuladorPage() {
                   <Label htmlFor="fgts">FGTS</Label>
                   <Input 
                     id="fgts" 
-                    placeholder="R$ 30.000" 
+                    placeholder="R$ XX.XXX" 
                     value={fgtsValue}
                     onChange={(e) => setFgtsValue(formatCurrencyInput(e.target.value))}
                   />
@@ -1135,7 +1135,7 @@ export default function SimuladorPage() {
                   <Label htmlFor="subsidio-federal">Subsídio Federal (MCMV)</Label>
                   <Input 
                     id="subsidio-federal" 
-                    placeholder="R$ 55.000" 
+                    placeholder="R$ XX.XXX" 
                     value={subsidioFederalValue}
                     onChange={(e) => setSubsidioFederalValue(formatCurrencyInput(e.target.value))}
                   />
@@ -1144,7 +1144,7 @@ export default function SimuladorPage() {
                   <Label htmlFor="subsidio-estadual">Subsídio Estadual (Morar Bem)</Label>
                   <Input 
                     id="subsidio-estadual" 
-                    placeholder="R$ 20.000" 
+                    placeholder="R$ XX.XXX" 
                     value={subsidioEstadualValue}
                     onChange={(e) => setSubsidioEstadualValue(formatCurrencyInput(e.target.value))}
                   />
@@ -1161,7 +1161,7 @@ export default function SimuladorPage() {
                   <div className="flex gap-2">
                     <Input 
                       id="ato" 
-                      placeholder="R$ 5.400" 
+                      placeholder="R$ X.XXX" 
                       className="flex-1" 
                       value={atoValue}
                       onChange={(e) => {
@@ -1193,7 +1193,7 @@ export default function SimuladorPage() {
                   <div className="flex gap-2">
                     <Input 
                       id="residual" 
-                      placeholder="R$ 5.400" 
+                      placeholder="R$ X.XXX" 
                       className="flex-1" 
                       value={residualValue}
                       onChange={(e) => setResidualValue(formatCurrencyInput(e.target.value))}
@@ -1229,7 +1229,7 @@ export default function SimuladorPage() {
                   <div className="flex gap-2">
                     <Input 
                       id="entrada" 
-                      placeholder="R$ 20.000" 
+                      placeholder="R$ XX.XXX" 
                       className="flex-1" 
                       value={entradaValue}
                       onChange={(e) => setEntradaValue(formatCurrencyInput(e.target.value))}
@@ -1267,7 +1267,7 @@ export default function SimuladorPage() {
                   <div className="flex gap-2">
                     <Input 
                       id="intercalada" 
-                      placeholder="R$ 1.250 (por parcela)" 
+                      placeholder="R$ X.XXX (por parcela)" 
                       className="flex-1" 
                       value={intercaladaValue}
                       onChange={(e) => setIntercaladaValue(formatCurrencyInput(e.target.value))}
@@ -1293,7 +1293,7 @@ export default function SimuladorPage() {
                   <Label htmlFor="desconto">Desconto</Label>
                   <Input 
                     id="desconto" 
-                    placeholder="R$ 5.000" 
+                    placeholder="R$ X.XXX" 
                     value={descontoValue}
                     onChange={(e) => setDescontoValue(formatCurrencyInput(e.target.value))}
                   />
@@ -1387,7 +1387,7 @@ export default function SimuladorPage() {
                           <span className="text-xs font-medium text-amber-700 dark:text-amber-400 min-w-[120px]">Financiamento</span>
                           <Input
                             type="text"
-                            placeholder="R$ 0,00"
+                            placeholder="R$ X,XX"
                             value={financiamentoParcelaValue}
                             onChange={(e) => setFinanciamentoParcelaValue(formatCurrencyInput(e.target.value))}
                             className="h-7 flex-1 text-xs border-amber-300 focus-visible:ring-amber-500"

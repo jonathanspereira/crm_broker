@@ -1503,7 +1503,7 @@ export default function DocumentosPage() {
               <Label htmlFor="lead-phone">Telefone</Label>
               <Input
                 id="lead-phone"
-                placeholder="(11) 99999-9999"
+                placeholder="(XX) XXXXX-XXXX"
                 value={newLeadPhone}
                 onChange={(e) => setNewLeadPhone(e.target.value)}
               />

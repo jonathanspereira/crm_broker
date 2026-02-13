@@ -211,7 +211,7 @@ export default function LeadsPage() {
               <Label htmlFor="lead-phone">Telefone</Label>
               <Input
                 id="lead-phone"
-                placeholder="(11) 99999-9999"
+                placeholder="(XX) XXXXX-XXXX"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
