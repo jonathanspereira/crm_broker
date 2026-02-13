@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { InputGroup, InputGroupInput, InputGroupAddon } from "@/components/ui/input-group"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { formatCurrencyInput, formatCurrencyValue, normalizeCurrencyValue } from "@/lib/utils"
@@ -332,6 +333,39 @@ export default function SimuladorPage() {
       alert("Por favor, selecione um empreendimento e pavimento")
       return
     }
+    
+    // Se já existe selectedId, estamos editando
+    if (selectedId) {
+      const updatedHistory = history.map((item) =>
+        item.id === selectedId
+          ? {
+              ...item,
+              principal: selectedLead?.name || item.principal,
+              leadId: selectedLeadId,
+              proponentes: hasMultipleProponents
+                ? proponentsList.map((item) => item.trim()).filter(Boolean).join(", ")
+                : "",
+              empreendimento: empreendimento.trim(),
+              pavimento: pavimento.trim(),
+              valor: normalizeCurrencyValue(valor),
+            }
+          : item
+      )
+      setHistory(updatedHistory)
+      localStorage.setItem(SIMULACOES_STORAGE_KEY, JSON.stringify(updatedHistory))
+      setSelectedLeadId("")
+      setSearchLeadTerm("")
+      setHasMultipleProponents(false)
+      setProponentsList([""])
+      setEmpreendimento("")
+      setPavimento("")
+      setValor("")
+      setSelectedId(null)
+      setOpenNewSimulation(false)
+      return
+    }
+    
+    // Caso contrário, criamos uma nova simulação
     const newSimulation: Simulation = {
       id: String(Date.now()),
       principal: selectedLead?.name || "Sem nome",
@@ -824,7 +858,7 @@ export default function SimuladorPage() {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
                   <AlertDialogAction onClick={handleCreateSimulation}>
-                    Criar simulação
+                    {selectedId ? "Salvar" : "Criar simulação"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -1175,12 +1209,14 @@ export default function SimuladorPage() {
                         <SelectItem value="48">48x</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Input 
-                      placeholder="Taxa %" 
-                      className="w-[80px]" 
-                      value={entradaTaxaJuros}
-                      onChange={(e) => setEntradaTaxaJuros(e.target.value)}
-                    />
+                    <InputGroup className="w-[80px]">
+                      <InputGroupInput 
+                        placeholder="Taxa" 
+                        value={entradaTaxaJuros}
+                        onChange={(e) => setEntradaTaxaJuros(e.target.value)}
+                      />
+                      <InputGroupAddon align="inline-end">%</InputGroupAddon>
+                    </InputGroup>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -1334,7 +1370,7 @@ export default function SimuladorPage() {
                       ) : (
                         <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/20 hover:border-amber-500/40 transition-colors">
                           <span className="text-xs font-medium text-amber-700 dark:text-amber-400 min-w-[120px]">Financiamento</span>
-                          <span className="inline-flex items-center rounded-full bg-amber-500/20 px-1.5 py-0 text-xs font-medium text-amber-700 dark:text-amber-300">360×</span>
+                          <span className="inline-flex items-center rounded-full bg-amber-500/20 px-1.5 py-0 text-xs font-medium text-amber-700 dark:text-amber-300">420</span>
                           <span className="w-32 text-left font-semibold text-xs text-amber-700 dark:text-amber-300">
                             {financiamentoParcelaValue ? formatCurrencyValue(financiamentoParcelaValue) : "a definir"}
                           </span>
@@ -1399,17 +1435,9 @@ export default function SimuladorPage() {
               </div>
             </CardContent>
             <CardFooter className="flex gap-2">
-              <Button 
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => window.open('https://www8.caixa.gov.br/siopiinternet-web/simulaOperacaoInternet.do?method=inicializarCasoUso', '_blank')}
-              >
-                Simular Financiamento
-              </Button>
               <Dialog open={openSaveConfirmation} onOpenChange={setOpenSaveConfirmation}>
                 <DialogTrigger asChild>
-                  <Button className="flex-1">Salvar simulação</Button>
+                  <Button className="w-full">Salvar simulação</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>

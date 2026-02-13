@@ -461,6 +461,24 @@ export default function DocumentosPage() {
   }
 
   const applyTemplateFormat = (command: string) => {
+    const editor = templateEditorRef.current
+    if (!editor) return
+
+    editor.focus()
+
+    // Garantir que há uma seleção ou cursor no editor
+    const selection = window.getSelection()
+    if (!selection) return
+
+    // Se não há seleção, criar uma no final do editor
+    if (selection.rangeCount === 0) {
+      const range = document.createRange()
+      range.selectNodeContents(editor)
+      range.collapse(false)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+
     if (command === "bold") document.execCommand("bold", false)
     else if (command === "italic") document.execCommand("italic", false)
     else if (command === "underline") document.execCommand("underline", false)
@@ -469,7 +487,6 @@ export default function DocumentosPage() {
     else if (command === "alignRight") document.execCommand("justifyRight", false)
     else if (command === "list") document.execCommand("insertUnorderedList", false)
     else if (command === "orderedList") document.execCommand("insertOrderedList", false)
-    templateEditorRef.current?.focus()
   }
 
   const handleCreateTemplate = () => {
@@ -598,6 +615,19 @@ export default function DocumentosPage() {
     if (!editor) return
 
     editor.focus()
+
+    // Garantir que há uma seleção ou cursor no editor
+    const selection = window.getSelection()
+    if (!selection) return
+
+    // Se não há seleção, criar uma no final do editor
+    if (selection.rangeCount === 0) {
+      const range = document.createRange()
+      range.selectNodeContents(editor)
+      range.collapse(false)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
 
     switch (formatType) {
       case "bold":
@@ -761,6 +791,11 @@ export default function DocumentosPage() {
                 <TabsTrigger value="modelos">Modelos</TabsTrigger>
                 <TabsTrigger value="documentos">Documentos</TabsTrigger>
               </TabsList>
+              
+              <Button onClick={handleNewDocument} variant="outline" className="w-full my-4">
+                <PlusIcon className="size-4 mr-2" />
+                Novo Documento
+              </Button>
               
               <TabsContent value="modelos" className="space-y-4 min-h-[550px] max-h-[550px] overflow-y-auto">
             {/* Filtro por categoria */}
@@ -978,12 +1013,6 @@ export default function DocumentosPage() {
               </TabsContent>
             </Tabs>
           </CardContent>
-          <CardFooter>
-            <Button onClick={handleNewDocument} variant="outline" className="w-full">
-              <PlusIcon className="size-4 mr-2" />
-              Novo Documento
-            </Button>
-          </CardFooter>
         </Card>
       </aside>
 
@@ -1404,7 +1433,7 @@ export default function DocumentosPage() {
                   id="template-editor"
                   contentEditable
                   suppressContentEditableWarning
-                  className="w-full min-h-[300px] rounded-md border-2 shadow-lg bg-white dark:bg-gray-50 px-12 py-8 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground"
+                  className="w-full min-h-[600px] rounded-md border-2 shadow-lg bg-white dark:bg-gray-50 px-12 py-8 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground"
                   style={{
                     fontFamily: "'Times New Roman', Times, serif",
                     fontSize: templateEditorFontSize,
