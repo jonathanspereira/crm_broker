@@ -24,6 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import {
   CalculatorIcon,
   ClockIcon,
+  EditIcon,
   FileTextIcon,
   HomeIcon,
   PlusIcon,
@@ -219,7 +220,9 @@ export default function SimuladorPage() {
     if (taxaJuros) {
       const taxa = parseFloat(taxaJuros.replace(",", "."))
       if (!isNaN(taxa) && taxa > 0) {
-        finalValue = numValue * (1 + taxa / 100)
+        // Calcular juros compostos mensalmente
+        const taxaMensal = taxa / 100
+        finalValue = numValue * Math.pow(1 + taxaMensal, numInstallments)
       }
     }
     
@@ -281,7 +284,7 @@ export default function SimuladorPage() {
   const residual = parseCurrency(residualValue)
   const entrada = parseCurrency(entradaValue)
   const entradaTaxaPercentual = parseFloat(entradaTaxaJuros.replace(",", "."))
-  const entradaComJuros = isNaN(entradaTaxaPercentual) || entradaTaxaPercentual === 0 ? entrada : entrada * (1 + entradaTaxaPercentual / 100)
+  const entradaComJuros = isNaN(entradaTaxaPercentual) || entradaTaxaPercentual === 0 ? entrada : entrada * Math.pow(1 + entradaTaxaPercentual / 100, parseInt(entradaInstallments || "1"))
   const intercalada = parseCurrency(intercaladaValue) * parseInt(intercaladaInstallments || "1")
   
   const totalSubsidios = subsidioFederal + subsidioEstadual
@@ -531,19 +534,34 @@ export default function SimuladorPage() {
                         </span>
                       </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      aria-label={`Excluir simulação de ${item.principal}`}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        setDeleteTarget(item)
-                      }}
-                    >
-                      <Trash2Icon className="size-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        aria-label={`Editar simulação de ${item.principal}`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setSelectedId(item.id)
+                        }}
+                      >
+                        <EditIcon className="size-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        aria-label={`Excluir simulação de ${item.principal}`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setDeleteTarget(item)
+                        }}
+                      >
+                        <Trash2Icon className="size-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -820,9 +838,19 @@ export default function SimuladorPage() {
         <div className="flex w-full flex-col gap-4 lg:flex-row">
           <Card className="w-full max-w-2xl">
             <CardHeader className="pb-1">
-              <div className="flex items-center gap-2">
-                <CalculatorIcon className="size-4" />
-                <CardTitle className="text-base">Simulador de Financiamento</CardTitle>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <CalculatorIcon className="size-4" />
+                  <CardTitle className="text-base">Simulador Financeiro</CardTitle>
+                </div>
+                <Button 
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open('https://www8.caixa.gov.br/siopiinternet-web/simulaOperacaoInternet.do?method=inicializarCasoUso', '_blank')}
+                >
+                  Simular Financiamento
+                </Button>
               </div>
               <CardDescription className="text-xs">
                 Preencha os dados para estimar o valor das parcelas.
@@ -1196,10 +1224,18 @@ export default function SimuladorPage() {
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex gap-2">
+              <Button 
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => window.open('https://www8.caixa.gov.br/siopiinternet-web/simulaOperacaoInternet.do?method=inicializarCasoUso', '_blank')}
+              >
+                Simular Financiamento
+              </Button>
               <Dialog open={openSaveConfirmation} onOpenChange={setOpenSaveConfirmation}>
                 <DialogTrigger asChild>
-                  <Button className="w-full">Salvar simulação</Button>
+                  <Button className="flex-1">Salvar simulação</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
