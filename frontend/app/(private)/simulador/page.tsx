@@ -1434,7 +1434,7 @@ export default function SimuladorPage() {
                       <span className="text-xs font-medium text-blue-700 dark:text-blue-400 min-w-[120px]">Entrada</span>
                       <span className="inline-flex items-center rounded-full bg-blue-500/20 px-1.5 py-0 text-xs font-medium text-blue-700 dark:text-blue-300">{entradaInstallments.padStart(3, '0')}×</span>
                       <span className="w-32 text-left font-semibold text-xs text-blue-700 dark:text-blue-300">
-                        {formatCurrencyValue(entrada / parseInt(entradaInstallments || "1"))}
+                        {formatCurrencyValue(entradaComJuros / parseInt(entradaInstallments || "1"))}
                       </span>
                       <span className="w-6" />
                     </div>
