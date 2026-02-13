@@ -36,6 +36,7 @@ import {
 type Simulation = {
   id: string
   principal: string
+  leadId?: string
   proponentes: string
   empreendimento: string
   pavimento: string
@@ -64,8 +65,18 @@ type Imovel = {
   pavimentos: Array<{ id: string; nome: string; valor: string }>
 }
 
+type Lead = {
+  id: string
+  name: string
+  email: string
+  phone: string
+  status: "novo" | "qualificado" | "negociacao" | "fechado" | "perdido"
+  createdAt: string
+}
+
 const IMOVEIS_STORAGE_KEY = "crm_imoveis"
 const SIMULACOES_STORAGE_KEY = "crm_simulacoes"
+const LEADS_STORAGE_KEY = "crm_leads"
 
 const getImoveisFromStorage = (): Imovel[] => {
   if (typeof window === "undefined") return []
@@ -76,6 +87,12 @@ const getImoveisFromStorage = (): Imovel[] => {
 const getSimulacoesFromStorage = (): Simulation[] => {
   if (typeof window === "undefined") return []
   const stored = localStorage.getItem(SIMULACOES_STORAGE_KEY)
+  return stored ? JSON.parse(stored) : []
+}
+
+const getLeadsFromStorage = (): Lead[] => {
+  if (typeof window === "undefined") return []
+  const stored = localStorage.getItem(LEADS_STORAGE_KEY)
   return stored ? JSON.parse(stored) : []
 }
 
@@ -105,6 +122,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 
 export default function SimuladorPage() {
   const [history, setHistory] = React.useState<Simulation[]>([])
+  const [leads, setLeads] = React.useState<Lead[]>([])
+  const [selectedLeadId, setSelectedLeadId] = React.useState("")
+  const [searchLeadTerm, setSearchLeadTerm] = React.useState("")
+  const [showLeadDropdown, setShowLeadDropdown] = React.useState(false)
+  const leadSearchRef = React.useRef<HTMLDivElement>(null)
+  const [showNewLeadDialog, setShowNewLeadDialog] = React.useState(false)
+  const [newLeadName, setNewLeadName] = React.useState("")
+  const [newLeadEmail, setNewLeadEmail] = React.useState("")
+  const [newLeadPhone, setNewLeadPhone] = React.useState("")
   const [empreendimentosCombinadosList, setEmpreendimentosCombinadosList] = React.useState<
     Array<{
       value: string
@@ -153,6 +179,7 @@ export default function SimuladorPage() {
     const combinedList = buildEmpreendimentosCombinadosList(imoveis)
     setEmpreendimentosCombinadosList(combinedList)
     setHistory(getSimulacoesFromStorage())
+    setLeads(getLeadsFromStorage())
     
     // Listener para atualizar empreendimentos quando o inventário mudar
     const handleStorageChange = (e: StorageEvent) => {
@@ -163,6 +190,9 @@ export default function SimuladorPage() {
       }
       if (e.key === SIMULACOES_STORAGE_KEY) {
         setHistory(getSimulacoesFromStorage())
+      }
+      if (e.key === LEADS_STORAGE_KEY) {
+        setLeads(getLeadsFromStorage())
       }
     }
     
@@ -262,6 +292,13 @@ export default function SimuladorPage() {
     item.principal.toLowerCase().includes(searchQuery.toLowerCase().trim())
   )
 
+  const filteredLeads = leads.filter(lead =>
+    lead.name.toLowerCase().includes(searchLeadTerm.toLowerCase()) ||
+    lead.email.toLowerCase().includes(searchLeadTerm.toLowerCase())
+  )
+
+  const selectedLead = leads.find(l => l.id === selectedLeadId)
+
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -273,12 +310,25 @@ export default function SimuladorPage() {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
 
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (leadSearchRef.current && !leadSearchRef.current.contains(event.target as Node)) {
+        setShowLeadDropdown(false)
+      }
+    }
+
+    if (showLeadDropdown) {
+      document.addEventListener("mousedown", handleClickOutside)
+      return () => document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [showLeadDropdown])
+
   const [openNewSimulation, setOpenNewSimulation] = React.useState(false)
   const [openSaveConfirmation, setOpenSaveConfirmation] = React.useState(false)
 
   const handleCreateSimulation = () => {
-    if (!clientName.trim()) {
-      alert("Por favor, informe o nome do cliente")
+    if (!selectedLeadId) {
+      alert("Por favor, selecione um lead")
       return
     }
     if (!empreendimento.trim() || !pavimento.trim()) {
@@ -287,7 +337,8 @@ export default function SimuladorPage() {
     }
     const newSimulation: Simulation = {
       id: String(Date.now()),
-      principal: clientName.trim(),
+      principal: selectedLead?.name || "Sem nome",
+      leadId: selectedLeadId,
       proponentes: hasMultipleProponents
         ? proponentsList.map((item) => item.trim()).filter(Boolean).join(", ")
         : "",
@@ -315,7 +366,8 @@ export default function SimuladorPage() {
     setHistory(updatedHistory)
     localStorage.setItem(SIMULACOES_STORAGE_KEY, JSON.stringify(updatedHistory))
     setSelectedId(newSimulation.id)
-    setClientName("")
+    setSelectedLeadId("")
+    setSearchLeadTerm("")
     setHasMultipleProponents(false)
     setProponentsList([""])
     setEmpreendimento("")
@@ -331,6 +383,7 @@ export default function SimuladorPage() {
         ? {
             ...item,
             principal: selectedSimulation.principal,
+            leadId: selectedSimulation.leadId,
             proponentes: selectedSimulation.proponentes,
             empreendimento: selectedSimulation.empreendimento,
             pavimento: selectedSimulation.pavimento,
@@ -384,6 +437,37 @@ export default function SimuladorPage() {
     setHistory(updatedHistory)
     localStorage.setItem(SIMULACOES_STORAGE_KEY, JSON.stringify(updatedHistory))
     setSelectedId((prev) => (prev === id ? null : prev))
+  }
+
+  const handleCreateLead = () => {
+    if (!newLeadName.trim() || !newLeadEmail.trim() || !newLeadPhone.trim()) {
+      alert("Por favor, preencha todos os campos do lead")
+      return
+    }
+
+    const newLead: Lead = {
+      id: String(Date.now()),
+      name: newLeadName,
+      email: newLeadEmail,
+      phone: newLeadPhone,
+      status: "novo",
+      createdAt: new Date().toISOString(),
+    }
+
+    const updated = [newLead, ...leads]
+    setLeads(updated)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(updated))
+    }
+
+    // Limpar formulário e fechar diálogo
+    setNewLeadName("")
+    setNewLeadEmail("")
+    setNewLeadPhone("")
+    setShowNewLeadDialog(false)
+
+    // Selecionar o novo lead
+    setSelectedLeadId(newLead.id)
   }
 
   return (
@@ -474,18 +558,76 @@ export default function SimuladorPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Nova simulação</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Informe o cliente, imóvel e os proponentes da simulação.
+                    Selecione o lead, imóvel e os proponentes da simulação.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="cliente">Nome do cliente</Label>
-                    <Input
-                      id="cliente"
-                      placeholder="Ex: Maria Oliveira"
-                      value={clientName}
-                      onChange={(event) => setClientName(event.target.value)}
-                    />
+                    <Label htmlFor="lead">Lead *</Label>
+                    {selectedLead ? (
+                      <div className="flex items-center gap-2">
+                        <div className="inline-flex items-center gap-2 bg-blue-100 dark:bg-blue-900 px-3 py-1.5 rounded-full">
+                          <span className="text-sm font-medium text-blue-900 dark:text-blue-100">{selectedLead.name}</span>
+                          <button
+                            onClick={() => {
+                              setSelectedLeadId("")
+                              setSearchLeadTerm("")
+                            }}
+                            className="text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100 ml-1"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div ref={leadSearchRef} className="relative flex gap-2">
+                        <Input
+                          id="lead"
+                          placeholder="Buscar lead..."
+                          value={searchLeadTerm}
+                          onChange={(e) => {
+                            setSearchLeadTerm(e.target.value)
+                            setShowLeadDropdown(true)
+                          }}
+                          onFocus={() => setShowLeadDropdown(true)}
+                          className="h-9 flex-1"
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() => setShowNewLeadDialog(true)}
+                          title="Adicionar novo lead"
+                        >
+                          <PlusIcon className="size-3.5" />
+                        </Button>
+                        
+                        {showLeadDropdown && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-md z-50 max-h-48 overflow-y-auto">
+                            {filteredLeads.length === 0 ? (
+                              <div className="p-2 text-sm text-muted-foreground text-center">
+                                Nenhum lead encontrado
+                              </div>
+                            ) : (
+                              filteredLeads.map(lead => (
+                                <button
+                                  key={lead.id}
+                                  onClick={() => {
+                                    setSelectedLeadId(lead.id)
+                                    setSearchLeadTerm("")
+                                    setShowLeadDropdown(false)
+                                  }}
+                                  className="w-full text-left px-3 py-2 hover:bg-muted transition-colors"
+                                >
+                                  <div className="font-medium text-sm">{lead.name}</div>
+                                  <div className="text-xs text-muted-foreground">{lead.email}</div>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="empreendimento">Empreendimento + Pavimento</Label>
@@ -592,6 +734,53 @@ export default function SimuladorPage() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            <Dialog open={showNewLeadDialog} onOpenChange={setShowNewLeadDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo Lead</DialogTitle>
+                  <DialogDescription>
+                    Cadastre um novo lead para usar nesta simulação.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-lead-name">Nome do lead</Label>
+                    <Input
+                      id="new-lead-name"
+                      placeholder="Ex: João Silva"
+                      value={newLeadName}
+                      onChange={(e) => setNewLeadName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-lead-email">E-mail</Label>
+                    <Input
+                      id="new-lead-email"
+                      placeholder="Ex: joao@example.com"
+                      value={newLeadEmail}
+                      onChange={(e) => setNewLeadEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-lead-phone">Telefone</Label>
+                    <Input
+                      id="new-lead-phone"
+                      placeholder="Ex: (11) 9999-9999"
+                      value={newLeadPhone}
+                      onChange={(e) => setNewLeadPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowNewLeadDialog(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleCreateLead}>
+                    Criar Lead
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </CardFooter>
         </Card>
       </aside>

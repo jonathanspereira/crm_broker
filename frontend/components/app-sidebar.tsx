@@ -12,7 +12,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, CalculatorIcon, BoxesIcon } from "lucide-react"
+import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, CalculatorIcon, BoxesIcon, FileTextIcon, Users2Icon } from "lucide-react"
 
 // This is sample data.
 const data = {
@@ -63,6 +63,26 @@ const data = {
       url: "/inventario",
       icon: (
         <BoxesIcon
+        />
+      ),
+      isActive: false,
+      items: [],
+    },
+    {
+      title: "Documentos",
+      url: "/documentos",
+      icon: (
+        <FileTextIcon
+        />
+      ),
+      isActive: false,
+      items: [],
+    },
+    {
+      title: "Leads",
+      url: "/leads",
+      icon: (
+        <Users2Icon
         />
       ),
       isActive: false,
