@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { formatCurrencyInput, formatCurrencyValue, normalizeCurrencyValue } from "@/lib/utils"
 import {
   Select,
   SelectContent,
@@ -41,29 +42,29 @@ type Simulation = {
   proponentes: string
   empreendimento: string
   pavimento: string
-  valor: string
-  financiamentoValue: string
-  fgtsValue: string
-  subsidioFederalValue: string
-  subsidioEstadualValue: string
-  descontoValue: string
-  atoValue: string
+  valor: number
+  financiamentoValue: number
+  fgtsValue: number
+  subsidioFederalValue: number
+  subsidioEstadualValue: number
+  descontoValue: number
+  atoValue: number
   atoInstallments: string
-  residualValue: string
+  residualValue: number
   residualInstallments: string
-  entradaValue: string
+  entradaValue: number
   entradaInstallments: string
   entradaTaxaJuros: string
-  intercaladaValue: string
+  intercaladaValue: number
   intercaladaInstallments: string
   financiamentoInstallments: string
-  financiamentoParcelaValue?: string
+  financiamentoParcelaValue?: number
 }
 
 type Imovel = {
   id: string
   nome: string
-  pavimentos: Array<{ id: string; nome: string; valor: string }>
+  pavimentos: Array<{ id: string; nome: string; valor: number }>
 }
 
 type Lead = {
@@ -104,7 +105,7 @@ const buildEmpreendimentosCombinadosList = (imoveis: Imovel[]) => {
       label: `${emp.nome} - ${pav.nome}`,
       empreendimento: emp.nome,
       pavimento: pav.nome,
-      valor: pav.valor,
+      valor: normalizeCurrencyValue(pav.valor),
     }))
   )
 }
@@ -132,17 +133,21 @@ export default function SimuladorPage() {
   const [newLeadName, setNewLeadName] = React.useState("")
   const [newLeadEmail, setNewLeadEmail] = React.useState("")
   const [newLeadPhone, setNewLeadPhone] = React.useState("")
+  const [showNewImovelDialog, setShowNewImovelDialog] = React.useState(false)
+  const [newImovelName, setNewImovelName] = React.useState("")
+  const [newImovelPavimentos, setNewImovelPavimentos] = React.useState<
+    Array<{ nome: string; valor: string }>
+  >([{ nome: "", valor: "" }])
   const [empreendimentosCombinadosList, setEmpreendimentosCombinadosList] = React.useState<
     Array<{
       value: string
       label: string
       empreendimento: string
       pavimento: string
-      valor: string
+      valor: number
     }>
   >([])
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
-  const [clientName, setClientName] = React.useState("")
   const [hasMultipleProponents, setHasMultipleProponents] =
     React.useState(false)
   const [proponentsList, setProponentsList] = React.useState<string[]>([""])
@@ -210,8 +215,8 @@ export default function SimuladorPage() {
   }, [showSaveToast])
   
   // Helper function to parse currency and calculate installment
-  const calculateInstallment = (value: string, installments: string, taxaJuros?: string) => {
-    const numValue = parseFloat(value.replace(/[^0-9,]/g, "").replace(",", "."))
+  const calculateInstallment = (value: string | number, installments: string, taxaJuros?: string) => {
+    const numValue = normalizeCurrencyValue(value)
     const numInstallments = parseInt(installments)
     if (isNaN(numValue) || isNaN(numInstallments) || numInstallments === 0) return ""
     if (numInstallments === 1) return ""
@@ -231,8 +236,8 @@ export default function SimuladorPage() {
   }
   
   // Helper function to calculate total from per-installment value (for Intercalada)
-  const calculateIntercaladaTotal = (valuePerInstallment: string, installments: string) => {
-    const numValue = parseFloat(valuePerInstallment.replace(/[^0-9,]/g, "").replace(",", "."))
+  const calculateIntercaladaTotal = (valuePerInstallment: string | number, installments: string) => {
+    const numValue = normalizeCurrencyValue(valuePerInstallment)
     const numInstallments = parseInt(installments)
     if (isNaN(numValue) || isNaN(numInstallments) || numInstallments === 0) return ""
     if (numInstallments === 1) return ""
@@ -240,52 +245,41 @@ export default function SimuladorPage() {
     return `Total: R$ ${totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${numInstallments}x)`
   }
   
-  // Helper to parse currency string to number
-  const parseCurrency = (value: string): number => {
-    const parsed = parseFloat(value.replace(/[^0-9,]/g, "").replace(",", "."))
-    return isNaN(parsed) ? 0 : parsed
-  }
-  
-  // Helper to format number to currency
-  const formatCurrency = (value: number): string => {
-    return `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  }
-  
   const selectedSimulation = history.find((item) => item.id === selectedId)
 
   React.useEffect(() => {
     if (!selectedSimulation) return
-    setFinanciamentoValue(selectedSimulation.financiamentoValue ?? "")
-    setFgtsValue(selectedSimulation.fgtsValue ?? "")
-    setSubsidioFederalValue(selectedSimulation.subsidioFederalValue ?? "")
-    setSubsidioEstadualValue(selectedSimulation.subsidioEstadualValue ?? "")
-    setDescontoValue(selectedSimulation.descontoValue ?? "")
-    setAtoValue(selectedSimulation.atoValue ?? "")
+    setFinanciamentoValue(formatCurrencyValue(selectedSimulation.financiamentoValue))
+    setFgtsValue(formatCurrencyValue(selectedSimulation.fgtsValue))
+    setSubsidioFederalValue(formatCurrencyValue(selectedSimulation.subsidioFederalValue))
+    setSubsidioEstadualValue(formatCurrencyValue(selectedSimulation.subsidioEstadualValue))
+    setDescontoValue(formatCurrencyValue(selectedSimulation.descontoValue))
+    setAtoValue(formatCurrencyValue(selectedSimulation.atoValue))
     setAtoInstallments(selectedSimulation.atoInstallments ?? "1")
-    setResidualValue(selectedSimulation.residualValue ?? "")
+    setResidualValue(formatCurrencyValue(selectedSimulation.residualValue))
     setResidualInstallments(selectedSimulation.residualInstallments ?? "1")
-    setEntradaValue(selectedSimulation.entradaValue ?? "")
+    setEntradaValue(formatCurrencyValue(selectedSimulation.entradaValue))
     setEntradaInstallments(selectedSimulation.entradaInstallments ?? "12")
     setEntradaTaxaJuros(selectedSimulation.entradaTaxaJuros ?? "")
-    setIntercaladaValue(selectedSimulation.intercaladaValue ?? "")
+    setIntercaladaValue(formatCurrencyValue(selectedSimulation.intercaladaValue))
     setIntercaladaInstallments(selectedSimulation.intercaladaInstallments ?? "1")
     setFinanciamentoInstallments(selectedSimulation.financiamentoInstallments ?? "360")
-    setFinanciamentoParcelaValue(selectedSimulation.financiamentoParcelaValue ?? "")
+    setFinanciamentoParcelaValue(formatCurrencyValue(selectedSimulation.financiamentoParcelaValue))
   }, [selectedSimulation])
   
   // Calculate summary values
-  const valorImovel = selectedSimulation ? parseCurrency(selectedSimulation.valor) : 0
-  const financiamento = parseCurrency(financiamentoValue)
-  const fgts = parseCurrency(fgtsValue)
-  const subsidioFederal = parseCurrency(subsidioFederalValue)
-  const subsidioEstadual = parseCurrency(subsidioEstadualValue)
-  const desconto = parseCurrency(descontoValue)
-  const ato = parseCurrency(atoValue)
-  const residual = parseCurrency(residualValue)
-  const entrada = parseCurrency(entradaValue)
+  const valorImovel = selectedSimulation ? normalizeCurrencyValue(selectedSimulation.valor) : 0
+  const financiamento = normalizeCurrencyValue(financiamentoValue)
+  const fgts = normalizeCurrencyValue(fgtsValue)
+  const subsidioFederal = normalizeCurrencyValue(subsidioFederalValue)
+  const subsidioEstadual = normalizeCurrencyValue(subsidioEstadualValue)
+  const desconto = normalizeCurrencyValue(descontoValue)
+  const ato = normalizeCurrencyValue(atoValue)
+  const residual = normalizeCurrencyValue(residualValue)
+  const entrada = normalizeCurrencyValue(entradaValue)
   const entradaTaxaPercentual = parseFloat(entradaTaxaJuros.replace(",", "."))
   const entradaComJuros = isNaN(entradaTaxaPercentual) || entradaTaxaPercentual === 0 ? entrada : entrada * Math.pow(1 + entradaTaxaPercentual / 100, parseInt(entradaInstallments || "1"))
-  const intercalada = parseCurrency(intercaladaValue) * parseInt(intercaladaInstallments || "1")
+  const intercalada = normalizeCurrencyValue(intercaladaValue) * parseInt(intercaladaInstallments || "1")
   
   const totalSubsidios = subsidioFederal + subsidioEstadual
   const totalRecursosProprios = ato + residual + entrada + intercalada
@@ -347,23 +341,23 @@ export default function SimuladorPage() {
         : "",
       empreendimento: empreendimento.trim(),
       pavimento: pavimento.trim(),
-      valor: valor.trim(),
-      financiamentoValue,
-      fgtsValue,
-      subsidioFederalValue,
-      subsidioEstadualValue,
-      descontoValue,
-      atoValue,
+      valor: normalizeCurrencyValue(valor),
+      financiamentoValue: normalizeCurrencyValue(financiamentoValue),
+      fgtsValue: normalizeCurrencyValue(fgtsValue),
+      subsidioFederalValue: normalizeCurrencyValue(subsidioFederalValue),
+      subsidioEstadualValue: normalizeCurrencyValue(subsidioEstadualValue),
+      descontoValue: normalizeCurrencyValue(descontoValue),
+      atoValue: normalizeCurrencyValue(atoValue),
       atoInstallments,
-      residualValue,
+      residualValue: normalizeCurrencyValue(residualValue),
       residualInstallments,
-      entradaValue,
+      entradaValue: normalizeCurrencyValue(entradaValue),
       entradaInstallments,
       entradaTaxaJuros,
-      intercaladaValue,
+      intercaladaValue: normalizeCurrencyValue(intercaladaValue),
       intercaladaInstallments,
       financiamentoInstallments,
-      financiamentoParcelaValue,
+      financiamentoParcelaValue: normalizeCurrencyValue(financiamentoParcelaValue),
     }
     const updatedHistory = [newSimulation, ...history]
     setHistory(updatedHistory)
@@ -379,6 +373,25 @@ export default function SimuladorPage() {
     setOpenNewSimulation(false)
   }
 
+  const handleEditSimulation = (simulation: Simulation) => {
+    setSelectedId(simulation.id)
+    setSelectedLeadId(simulation.leadId ?? "")
+    setSearchLeadTerm("")
+    setShowLeadDropdown(false)
+    setEmpreendimento(simulation.empreendimento)
+    setPavimento(simulation.pavimento)
+    setValor(formatCurrencyValue(simulation.valor))
+
+    const proponents = simulation.proponentes
+      ? simulation.proponentes.split(",").map((item) => item.trim()).filter(Boolean)
+      : []
+    const hasProponents = proponents.length > 0
+    setHasMultipleProponents(hasProponents)
+    setProponentsList(hasProponents ? proponents : [""])
+
+    setOpenNewSimulation(true)
+  }
+
   const handleSaveSimulation = () => {
     if (!selectedSimulation) return
     const updatedHistory = history.map((item) =>
@@ -390,23 +403,23 @@ export default function SimuladorPage() {
             proponentes: selectedSimulation.proponentes,
             empreendimento: selectedSimulation.empreendimento,
             pavimento: selectedSimulation.pavimento,
-            valor: selectedSimulation.valor,
-            financiamentoValue,
-            fgtsValue,
-            subsidioFederalValue,
-            subsidioEstadualValue,
-            descontoValue,
-            atoValue,
+            valor: normalizeCurrencyValue(valor),
+            financiamentoValue: normalizeCurrencyValue(financiamentoValue),
+            fgtsValue: normalizeCurrencyValue(fgtsValue),
+            subsidioFederalValue: normalizeCurrencyValue(subsidioFederalValue),
+            subsidioEstadualValue: normalizeCurrencyValue(subsidioEstadualValue),
+            descontoValue: normalizeCurrencyValue(descontoValue),
+            atoValue: normalizeCurrencyValue(atoValue),
             atoInstallments,
-            residualValue,
+            residualValue: normalizeCurrencyValue(residualValue),
             residualInstallments,
-            entradaValue,
+            entradaValue: normalizeCurrencyValue(entradaValue),
             entradaInstallments,
             entradaTaxaJuros,
-            intercaladaValue,
+            intercaladaValue: normalizeCurrencyValue(intercaladaValue),
             intercaladaInstallments,
             financiamentoInstallments,
-            financiamentoParcelaValue,
+            financiamentoParcelaValue: normalizeCurrencyValue(financiamentoParcelaValue),
           }
         : item
     )
@@ -471,6 +484,53 @@ export default function SimuladorPage() {
 
     // Selecionar o novo lead
     setSelectedLeadId(newLead.id)
+  }
+
+  const handleCreateImovel = () => {
+    if (!newImovelName.trim()) {
+      alert("Por favor, informe o nome do imóvel")
+      return
+    }
+
+    const pavimentosValidos = newImovelPavimentos
+      .filter((pav) => pav.nome.trim() && pav.valor.trim())
+      .map((pav) => ({
+        nome: pav.nome.trim(),
+        valor: normalizeCurrencyValue(pav.valor),
+      }))
+    if (pavimentosValidos.length === 0) {
+      alert("Por favor, adicione ao menos um pavimento com valor")
+      return
+    }
+
+    const newId = String(Date.now())
+    const newImovel: Imovel = {
+      id: newId,
+      nome: newImovelName.trim(),
+      pavimentos: pavimentosValidos.map((pav, idx) => ({
+        id: `${newId}-${idx}`,
+        nome: pav.nome,
+        valor: pav.valor,
+      })),
+    }
+
+    const currentImoveis = getImoveisFromStorage()
+    const updatedImoveis = [...currentImoveis, newImovel]
+    localStorage.setItem(IMOVEIS_STORAGE_KEY, JSON.stringify(updatedImoveis))
+    setEmpreendimentosCombinadosList(
+      buildEmpreendimentosCombinadosList(updatedImoveis)
+    )
+
+    const primeiroPav = newImovel.pavimentos[0]
+    if (primeiroPav) {
+      setEmpreendimento(newImovel.nome)
+      setPavimento(primeiroPav.nome)
+      setValor(formatCurrencyValue(primeiroPav.valor))
+    }
+
+    setShowNewImovelDialog(false)
+    setNewImovelName("")
+    setNewImovelPavimentos([{ nome: "", valor: "" }])
   }
 
   return (
@@ -543,7 +603,7 @@ export default function SimuladorPage() {
                         aria-label={`Editar simulação de ${item.principal}`}
                         onClick={(event) => {
                           event.stopPropagation()
-                          setSelectedId(item.id)
+                          handleEditSimulation(item)
                         }}
                       >
                         <EditIcon className="size-4" />
@@ -648,7 +708,18 @@ export default function SimuladorPage() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="empreendimento">Empreendimento + Pavimento</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="empreendimento">Empreendimento + Pavimento</Label>
+                      <Button
+                        type="button"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setShowNewImovelDialog(true)}
+                        title="Adicionar novo imóvel"
+                      >
+                        <PlusIcon className="size-3.5" />
+                      </Button>
+                    </div>
                     <Select
                       value={empreendimento && pavimento ? `${empreendimento}|${pavimento}` : ""}
                       onValueChange={(value) => {
@@ -658,7 +729,7 @@ export default function SimuladorPage() {
                         if (selected) {
                           setEmpreendimento(selected.empreendimento)
                           setPavimento(selected.pavimento)
-                          setValor(selected.valor)
+                          setValor(formatCurrencyValue(selected.valor))
                         }
                       }}
                     >
@@ -666,11 +737,17 @@ export default function SimuladorPage() {
                         <SelectValue placeholder="Selecione o empreendimento e pavimento" />
                       </SelectTrigger>
                       <SelectContent>
-                        {empreendimentosCombinadosList.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
+                        {empreendimentosCombinadosList.length === 0 ? (
+                          <div className="p-2 text-sm text-muted-foreground text-center">
+                            Nenhum imóvel cadastrado
+                          </div>
+                        ) : (
+                          empreendimentosCombinadosList.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -799,6 +876,93 @@ export default function SimuladorPage() {
                 </div>
               </DialogContent>
             </Dialog>
+            <Dialog open={showNewImovelDialog} onOpenChange={setShowNewImovelDialog}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Novo imóvel</DialogTitle>
+                  <DialogDescription>
+                    Informe o nome do imóvel e adicione os pavimentos com valores.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-imovel-name">Nome do imóvel</Label>
+                    <Input
+                      id="new-imovel-name"
+                      placeholder="Ex: Residencial Primavera"
+                      value={newImovelName}
+                      onChange={(e) => setNewImovelName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Pavimentos</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() =>
+                          setNewImovelPavimentos((prev) => [
+                            ...prev,
+                            { nome: "", valor: "" },
+                          ])
+                        }
+                      >
+                        <PlusIcon className="size-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {newImovelPavimentos.map((pav, index) => (
+                        <div key={`pavimento-${index}`} className="flex gap-2">
+                          <Input
+                            placeholder={`Pavimento ${index + 1}`}
+                            value={pav.nome}
+                            onChange={(e) => {
+                              const next = [...newImovelPavimentos]
+                              next[index] = { ...next[index], nome: e.target.value }
+                              setNewImovelPavimentos(next)
+                            }}
+                          />
+                          <Input
+                            placeholder="Valor"
+                            className="w-32"
+                            value={pav.valor}
+                            onChange={(e) => {
+                              const next = [...newImovelPavimentos]
+                              next[index] = { ...next[index], valor: formatCurrencyInput(e.target.value) }
+                              setNewImovelPavimentos(next)
+                            }}
+                          />
+                          {newImovelPavimentos.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() =>
+                                setNewImovelPavimentos((prev) =>
+                                  prev.filter((_, i) => i !== index)
+                                )
+                              }
+                            >
+                              <Trash2Icon className="size-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowNewImovelDialog(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleCreateImovel}>
+                    Criar imóvel
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </CardFooter>
         </Card>
       </aside>
@@ -878,7 +1042,7 @@ export default function SimuladorPage() {
                     <span>{selectedSimulation.empreendimento} - {selectedSimulation.pavimento}</span>
                   </div>
                   <span>•</span>
-                  <span className="font-medium">{selectedSimulation.valor}</span>
+                  <span className="font-medium">{formatCurrencyValue(selectedSimulation.valor) || "—"}</span>
                 </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -888,7 +1052,7 @@ export default function SimuladorPage() {
                     id="financiamento" 
                     placeholder="R$ 130.000" 
                     value={financiamentoValue}
-                    onChange={(e) => setFinanciamentoValue(e.target.value)}
+                    onChange={(e) => setFinanciamentoValue(formatCurrencyInput(e.target.value))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -897,7 +1061,7 @@ export default function SimuladorPage() {
                     id="fgts" 
                     placeholder="R$ 30.000" 
                     value={fgtsValue}
-                    onChange={(e) => setFgtsValue(e.target.value)}
+                    onChange={(e) => setFgtsValue(formatCurrencyInput(e.target.value))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -906,7 +1070,7 @@ export default function SimuladorPage() {
                     id="subsidio-federal" 
                     placeholder="R$ 55.000" 
                     value={subsidioFederalValue}
-                    onChange={(e) => setSubsidioFederalValue(e.target.value)}
+                    onChange={(e) => setSubsidioFederalValue(formatCurrencyInput(e.target.value))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -915,7 +1079,7 @@ export default function SimuladorPage() {
                     id="subsidio-estadual" 
                     placeholder="R$ 20.000" 
                     value={subsidioEstadualValue}
-                    onChange={(e) => setSubsidioEstadualValue(e.target.value)}
+                    onChange={(e) => setSubsidioEstadualValue(formatCurrencyInput(e.target.value))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -933,7 +1097,7 @@ export default function SimuladorPage() {
                       placeholder="R$ 5.400" 
                       className="flex-1" 
                       value={atoValue}
-                      onChange={(e) => setAtoValue(e.target.value)}
+                      onChange={(e) => setAtoValue(formatCurrencyInput(e.target.value))}
                     />
                     <Select value={atoInstallments} onValueChange={setAtoInstallments}>
                       <SelectTrigger className="w-[100px]">
@@ -962,7 +1126,7 @@ export default function SimuladorPage() {
                       placeholder="R$ 5.400" 
                       className="flex-1" 
                       value={residualValue}
-                      onChange={(e) => setResidualValue(e.target.value)}
+                      onChange={(e) => setResidualValue(formatCurrencyInput(e.target.value))}
                     />
                     <Select value={residualInstallments} onValueChange={setResidualInstallments}>
                       <SelectTrigger className="w-[100px]">
@@ -998,7 +1162,7 @@ export default function SimuladorPage() {
                       placeholder="R$ 20.000" 
                       className="flex-1" 
                       value={entradaValue}
-                      onChange={(e) => setEntradaValue(e.target.value)}
+                      onChange={(e) => setEntradaValue(formatCurrencyInput(e.target.value))}
                     />
                     <Select value={entradaInstallments} onValueChange={setEntradaInstallments}>
                       <SelectTrigger className="w-[100px]">
@@ -1034,7 +1198,7 @@ export default function SimuladorPage() {
                       placeholder="R$ 1.250 (por parcela)" 
                       className="flex-1" 
                       value={intercaladaValue}
-                      onChange={(e) => setIntercaladaValue(e.target.value)}
+                      onChange={(e) => setIntercaladaValue(formatCurrencyInput(e.target.value))}
                     />
                     <Select value={intercaladaInstallments} onValueChange={setIntercaladaInstallments}>
                       <SelectTrigger className="w-[100px]">
@@ -1059,7 +1223,7 @@ export default function SimuladorPage() {
                     id="desconto" 
                     placeholder="R$ 5.000" 
                     value={descontoValue}
-                    onChange={(e) => setDescontoValue(e.target.value)}
+                    onChange={(e) => setDescontoValue(formatCurrencyInput(e.target.value))}
                   />
                 </div>
               </div>
@@ -1094,34 +1258,36 @@ export default function SimuladorPage() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Valor do imóvel</span>
-                  <span className="font-medium text-destructive">-R$ {selectedSimulation.valor}</span>
+                  <span className="font-medium text-destructive">
+                    {formatCurrencyValue(valorImovel) ? `-${formatCurrencyValue(valorImovel)}` : "—"}
+                  </span>
                 </div>
               </div>
               <div className="border-t pt-1.5 space-y-1.5">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Financiamento</span>
-                  <span className="font-medium">{financiamento > 0 ? `+${formatCurrency(financiamento)}` : "—"}</span>
+                  <span className="font-medium">{financiamento > 0 ? `+${formatCurrencyValue(financiamento)}` : "—"}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">FGTS</span>
-                  <span className="font-medium">{fgts > 0 ? `+${formatCurrency(fgts)}` : "—"}</span>
+                  <span className="font-medium">{fgts > 0 ? `+${formatCurrencyValue(fgts)}` : "—"}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Subsídios</span>
-                  <span className="font-medium">{totalSubsidios > 0 ? `+${formatCurrency(totalSubsidios)}` : "—"}</span>
+                  <span className="font-medium">{totalSubsidios > 0 ? `+${formatCurrencyValue(totalSubsidios)}` : "—"}</span>
                 </div>
               </div>
               <div className="border-t pt-1.5 space-y-1.5">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Desconto</span>
-                  <span className="font-medium">{desconto > 0 ? `+${formatCurrency(desconto)}` : "—"}</span>
+                  <span className="font-medium">{desconto > 0 ? `+${formatCurrencyValue(desconto)}` : "—"}</span>
                 </div>
               </div>
               <div className="border-t pt-1.5">
                 <div className="flex items-center justify-between text-sm font-semibold">
                   <span className="text-foreground">Recursos Próprios</span>
                   <span className={totalRecursosProprios > 0 ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}>
-                    {totalRecursosProprios > 0 ? `+${formatCurrency(totalRecursosProprios)}` : "—"}
+                    {totalRecursosProprios > 0 ? `+${formatCurrencyValue(totalRecursosProprios)}` : "—"}
                   </span>
                 </div>
               </div>
@@ -1130,7 +1296,7 @@ export default function SimuladorPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Saldo</span>
                     <span className={`text-lg font-bold ${saldo < 0 ? "text-destructive" : saldo > 0 ? "text-yellow-600" : "text-green-600"}`}>
-                      {formatCurrency(saldo)}
+                      {formatCurrencyValue(saldo)}
                     </span>
                   </div>
                 </div>
@@ -1151,7 +1317,7 @@ export default function SimuladorPage() {
                             type="text"
                             placeholder="R$ 0,00"
                             value={financiamentoParcelaValue}
-                            onChange={(e) => setFinanciamentoParcelaValue(e.target.value)}
+                            onChange={(e) => setFinanciamentoParcelaValue(formatCurrencyInput(e.target.value))}
                             className="h-7 flex-1 text-xs border-amber-300 focus-visible:ring-amber-500"
                           />
                           <span className="text-xs text-muted-foreground whitespace-nowrap">360x</span>
@@ -1170,7 +1336,7 @@ export default function SimuladorPage() {
                           <span className="text-xs font-medium text-amber-700 dark:text-amber-400 min-w-[120px]">Financiamento</span>
                           <span className="inline-flex items-center rounded-full bg-amber-500/20 px-1.5 py-0 text-xs font-medium text-amber-700 dark:text-amber-300">360×</span>
                           <span className="w-32 text-left font-semibold text-xs text-amber-700 dark:text-amber-300">
-                            {financiamentoParcelaValue ? `R$ ${financiamentoParcelaValue}` : "a definir"}
+                            {financiamentoParcelaValue ? formatCurrencyValue(financiamentoParcelaValue) : "a definir"}
                           </span>
                           <Button
                             type="button"
@@ -1190,7 +1356,9 @@ export default function SimuladorPage() {
                     <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-green-500/10 to-green-500/5 border border-green-500/20 hover:border-green-500/40 transition-colors">
                       <span className="text-xs font-medium text-green-700 dark:text-green-400 min-w-[120px]">Ato (Reserva)</span>
                       <span className="inline-flex items-center rounded-full bg-green-500/20 px-1.5 py-0 text-xs font-medium text-green-700 dark:text-green-300">{atoInstallments.padStart(3, '0')}×</span>
-                      <span className="w-32 text-left font-semibold text-xs text-green-700 dark:text-green-300">{formatCurrency(ato / parseInt(atoInstallments || "1"))}</span>
+                      <span className="w-32 text-left font-semibold text-xs text-green-700 dark:text-green-300">
+                        {formatCurrencyValue(ato / parseInt(atoInstallments || "1"))}
+                      </span>
                       <span className="w-6" />
                     </div>
                   )}
@@ -1199,7 +1367,9 @@ export default function SimuladorPage() {
                     <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-rose-500/10 to-rose-500/5 border border-rose-500/20 hover:border-rose-500/40 transition-colors">
                       <span className="text-xs font-medium text-rose-700 dark:text-rose-400 min-w-[120px]">Residual (Sinal)</span>
                       <span className="inline-flex items-center rounded-full bg-rose-500/20 px-1.5 py-0 text-xs font-medium text-rose-700 dark:text-rose-300">{residualInstallments.padStart(3, '0')}×</span>
-                      <span className="w-32 text-left font-semibold text-xs text-rose-700 dark:text-rose-300">{formatCurrency(residual / parseInt(residualInstallments || "1"))}</span>
+                      <span className="w-32 text-left font-semibold text-xs text-rose-700 dark:text-rose-300">
+                        {formatCurrencyValue(residual / parseInt(residualInstallments || "1"))}
+                      </span>
                       <span className="w-6" />
                     </div>
                   )}
@@ -1208,7 +1378,9 @@ export default function SimuladorPage() {
                     <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-blue-500/10 to-blue-500/5 border border-blue-500/20 hover:border-blue-500/40 transition-colors">
                       <span className="text-xs font-medium text-blue-700 dark:text-blue-400 min-w-[120px]">Entrada</span>
                       <span className="inline-flex items-center rounded-full bg-blue-500/20 px-1.5 py-0 text-xs font-medium text-blue-700 dark:text-blue-300">{entradaInstallments.padStart(3, '0')}×</span>
-                      <span className="w-32 text-left font-semibold text-xs text-blue-700 dark:text-blue-300">{formatCurrency(entrada / parseInt(entradaInstallments || "1"))}</span>
+                      <span className="w-32 text-left font-semibold text-xs text-blue-700 dark:text-blue-300">
+                        {formatCurrencyValue(entrada / parseInt(entradaInstallments || "1"))}
+                      </span>
                       <span className="w-6" />
                     </div>
                   )}
@@ -1217,7 +1389,9 @@ export default function SimuladorPage() {
                     <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-purple-500/10 to-purple-500/5 border border-purple-500/20 hover:border-purple-500/40 transition-colors">
                       <span className="text-xs font-medium text-purple-700 dark:text-purple-400 min-w-[120px]">Intercalada</span>
                       <span className="inline-flex items-center rounded-full bg-purple-500/20 px-1.5 py-0 text-xs font-medium text-purple-700 dark:text-purple-300">{intercaladaInstallments.padStart(3, '0')}×</span>
-                      <span className="w-32 text-left font-semibold text-xs text-purple-700 dark:text-purple-300">{formatCurrency(parseCurrency(intercaladaValue))}</span>
+                      <span className="w-32 text-left font-semibold text-xs text-purple-700 dark:text-purple-300">
+                        {formatCurrencyValue(intercalada)}
+                      </span>
                       <span className="w-6" />
                     </div>
                   )}

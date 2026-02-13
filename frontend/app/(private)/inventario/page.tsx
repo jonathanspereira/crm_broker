@@ -38,12 +38,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { formatCurrencyInput, formatCurrencyValue, normalizeCurrencyValue } from "@/lib/utils"
 import { BuildingIcon, EditIcon, PlusIcon, Trash2Icon } from "lucide-react"
 
 type Pavimento = {
   id: string
   nome: string
-  valor: string
+  valor: number
 }
 
 type Imovel = {
@@ -57,7 +58,14 @@ const STORAGE_KEY = "crm_imoveis"
 const getImoveisFromStorage = (): Imovel[] => {
   if (typeof window === "undefined") return []
   const stored = localStorage.getItem(STORAGE_KEY)
-  return stored ? JSON.parse(stored) : []
+  const parsed = stored ? JSON.parse(stored) : []
+  return parsed.map((imovel: Imovel) => ({
+    ...imovel,
+    pavimentos: imovel.pavimentos.map((pav) => ({
+      ...pav,
+      valor: normalizeCurrencyValue(pav.valor),
+    })),
+  }))
 }
 
 export default function InventarioPage() {
@@ -81,7 +89,10 @@ export default function InventarioPage() {
       setEditingImovel(imovel)
       setNomeImovel(imovel.nome)
       setPavimentosList(
-        imovel.pavimentos.map((p) => ({ nome: p.nome, valor: p.valor }))
+        imovel.pavimentos.map((p) => ({
+          nome: p.nome,
+          valor: formatCurrencyValue(p.valor),
+        }))
       )
     } else {
       setEditingImovel(null)
@@ -94,9 +105,12 @@ export default function InventarioPage() {
   const handleSaveImovel = () => {
     if (!nomeImovel.trim()) return
 
-    const pavimentosValidos = pavimentosList.filter(
-      (p) => p.nome.trim() && p.valor.trim()
-    )
+    const pavimentosValidos = pavimentosList
+      .filter((p) => p.nome.trim() && p.valor.trim())
+      .map((p) => ({
+        nome: p.nome.trim(),
+        valor: normalizeCurrencyValue(p.valor),
+      }))
     if (pavimentosValidos.length === 0) return
 
     let updatedImoveis: Imovel[]
@@ -108,8 +122,8 @@ export default function InventarioPage() {
               nome: nomeImovel.trim(),
               pavimentos: pavimentosValidos.map((p, idx) => ({
                 id: `${imovel.id}-${idx}`,
-                nome: p.nome.trim(),
-                valor: p.valor.trim(),
+                nome: p.nome,
+                valor: p.valor,
               })),
             }
           : imovel
@@ -121,8 +135,8 @@ export default function InventarioPage() {
         nome: nomeImovel.trim(),
         pavimentos: pavimentosValidos.map((p, idx) => ({
           id: `${newId}-${idx}`,
-          nome: p.nome.trim(),
-          valor: p.valor.trim(),
+          nome: p.nome,
+          valor: p.valor,
         })),
       }
       updatedImoveis = [...imoveis, newImovel]
@@ -226,7 +240,7 @@ export default function InventarioPage() {
                         value={pav.valor}
                         onChange={(e) => {
                           const next = [...pavimentosList]
-                          next[index].valor = e.target.value
+                          next[index].valor = formatCurrencyInput(e.target.value)
                           setPavimentosList(next)
                         }}
                         className="flex-1"
@@ -314,7 +328,7 @@ export default function InventarioPage() {
                       {pav.imovelNome}
                     </TableCell>
                     <TableCell>{pav.nome}</TableCell>
-                    <TableCell>{pav.valor}</TableCell>
+                    <TableCell>{formatCurrencyValue(pav.valor)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button
