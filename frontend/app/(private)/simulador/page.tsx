@@ -51,6 +51,7 @@ type Simulation = {
   descontoValue: number
   atoValue: number
   atoInstallments: string
+  atoAuto: boolean
   residualValue: number
   residualInstallments: string
   entradaValue: number
@@ -65,7 +66,7 @@ type Simulation = {
 type Imovel = {
   id: string
   nome: string
-  pavimentos: Array<{ id: string; nome: string; valor: number }>
+  pavimentos: Array<{ id: string; nome: string; valor: number; valorTabela?: number }>
 }
 
 type Lead = {
@@ -107,6 +108,7 @@ const buildEmpreendimentosCombinadosList = (imoveis: Imovel[]) => {
       empreendimento: emp.nome,
       pavimento: pav.nome,
       valor: normalizeCurrencyValue(pav.valor),
+      valorTabela: pav.valorTabela ? normalizeCurrencyValue(pav.valorTabela) : undefined,
     }))
   )
 }
@@ -137,8 +139,8 @@ export default function SimuladorPage() {
   const [showNewImovelDialog, setShowNewImovelDialog] = React.useState(false)
   const [newImovelName, setNewImovelName] = React.useState("")
   const [newImovelPavimentos, setNewImovelPavimentos] = React.useState<
-    Array<{ nome: string; valor: string }>
-  >([{ nome: "", valor: "" }])
+    Array<{ nome: string; valor: string; valorTabela: string }>
+  >([{ nome: "", valor: "", valorTabela: "" }])
   const [empreendimentosCombinadosList, setEmpreendimentosCombinadosList] = React.useState<
     Array<{
       value: string
@@ -146,6 +148,7 @@ export default function SimuladorPage() {
       empreendimento: string
       pavimento: string
       valor: number
+      valorTabela?: number
     }>
   >([])
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
@@ -155,6 +158,7 @@ export default function SimuladorPage() {
   const [empreendimento, setEmpreendimento] = React.useState("")
   const [pavimento, setPavimento] = React.useState("")
   const [valor, setValor] = React.useState("")
+  const [valorTabela, setValorTabela] = React.useState<number | undefined>(undefined)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [deleteTarget, setDeleteTarget] = React.useState<Simulation | null>(
     null
@@ -271,7 +275,7 @@ export default function SimuladorPage() {
   
   // Calculate summary values
   const valorImovel = selectedSimulation ? normalizeCurrencyValue(selectedSimulation.valor) : 0
-  const baseImovelValue = normalizeCurrencyValue(valor) || valorImovel
+  const baseImovelValue = valorTabela || normalizeCurrencyValue(valor) || valorImovel
   const financiamento = normalizeCurrencyValue(financiamentoValue)
   const fgts = normalizeCurrencyValue(fgtsValue)
   const subsidioFederal = normalizeCurrencyValue(subsidioFederalValue)
@@ -395,6 +399,7 @@ export default function SimuladorPage() {
       descontoValue: normalizeCurrencyValue(descontoValue),
       atoValue: normalizeCurrencyValue(atoValue),
       atoInstallments,
+      atoAuto,
       residualValue: normalizeCurrencyValue(residualValue),
       residualInstallments,
       entradaValue: normalizeCurrencyValue(entradaValue),
@@ -427,7 +432,7 @@ export default function SimuladorPage() {
     setEmpreendimento(simulation.empreendimento)
     setPavimento(simulation.pavimento)
     setValor(formatCurrencyValue(simulation.valor))
-    setAtoAuto(false)
+    setAtoAuto(simulation.atoAuto ?? false)
 
     const proponents = simulation.proponentes
       ? simulation.proponentes.split(",").map((item) => item.trim()).filter(Boolean)
@@ -461,6 +466,7 @@ export default function SimuladorPage() {
             descontoValue: normalizeCurrencyValue(descontoValue),
             atoValue: normalizeCurrencyValue(atoValue),
             atoInstallments,
+            atoAuto,
             residualValue: normalizeCurrencyValue(residualValue),
             residualInstallments,
             entradaValue: normalizeCurrencyValue(entradaValue),
@@ -508,6 +514,7 @@ export default function SimuladorPage() {
     setEmpreendimento("")
     setPavimento("")
     setValor("")
+    setValorTabela(undefined)
     setAtoAuto(true)
     handleClearValues()
     setOpenNewSimulation(true)
@@ -562,6 +569,7 @@ export default function SimuladorPage() {
       .map((pav) => ({
         nome: pav.nome.trim(),
         valor: normalizeCurrencyValue(pav.valor),
+        valorTabela: pav.valorTabela.trim() ? normalizeCurrencyValue(pav.valorTabela) : undefined,
       }))
     if (pavimentosValidos.length === 0) {
       alert("Por favor, adicione ao menos um pavimento com valor")
@@ -591,11 +599,12 @@ export default function SimuladorPage() {
       setEmpreendimento(newImovel.nome)
       setPavimento(primeiroPav.nome)
       setValor(formatCurrencyValue(primeiroPav.valor))
+      setValorTabela(primeiroPav.valorTabela)
     }
 
     setShowNewImovelDialog(false)
     setNewImovelName("")
-    setNewImovelPavimentos([{ nome: "", valor: "" }])
+    setNewImovelPavimentos([{ nome: "", valor: "", valorTabela: "" }])
   }
 
   return (
@@ -797,6 +806,7 @@ export default function SimuladorPage() {
                           setEmpreendimento(selected.empreendimento)
                           setPavimento(selected.pavimento)
                           setValor(formatCurrencyValue(selected.valor))
+                          setValorTabela(selected.valorTabela)
                         }
                       }}
                     >
@@ -971,7 +981,7 @@ export default function SimuladorPage() {
                         onClick={() =>
                           setNewImovelPavimentos((prev) => [
                             ...prev,
-                            { nome: "", valor: "" },
+                            { nome: "", valor: "", valorTabela: "" },
                           ])
                         }
                       >
@@ -997,6 +1007,16 @@ export default function SimuladorPage() {
                             onChange={(e) => {
                               const next = [...newImovelPavimentos]
                               next[index] = { ...next[index], valor: formatCurrencyInput(e.target.value) }
+                              setNewImovelPavimentos(next)
+                            }}
+                          />
+                          <Input
+                            placeholder="Valor de Tabela"
+                            className="w-32"
+                            value={pav.valorTabela}
+                            onChange={(e) => {
+                              const next = [...newImovelPavimentos]
+                              next[index] = { ...next[index], valorTabela: formatCurrencyInput(e.target.value) }
                               setNewImovelPavimentos(next)
                             }}
                           />

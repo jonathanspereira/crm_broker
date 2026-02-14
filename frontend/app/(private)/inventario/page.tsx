@@ -45,6 +45,7 @@ type Pavimento = {
   id: string
   nome: string
   valor: number
+  valorTabela?: number
 }
 
 type Imovel = {
@@ -81,8 +82,8 @@ export default function InventarioPage() {
 
   const [nomeImovel, setNomeImovel] = React.useState("")
   const [pavimentosList, setPavimentosList] = React.useState<
-    Array<{ nome: string; valor: string }>
-  >([{ nome: "", valor: "" }])
+    Array<{ nome: string; valor: string; valorTabela: string }>
+  >([{ nome: "", valor: "", valorTabela: "" }])
 
   const handleOpenDialog = (imovel?: Imovel) => {
     if (imovel) {
@@ -92,12 +93,13 @@ export default function InventarioPage() {
         imovel.pavimentos.map((p) => ({
           nome: p.nome,
           valor: formatCurrencyValue(p.valor),
+          valorTabela: p.valorTabela ? formatCurrencyValue(p.valorTabela) : "",
         }))
       )
     } else {
       setEditingImovel(null)
       setNomeImovel("")
-      setPavimentosList([{ nome: "", valor: "" }])
+      setPavimentosList([{ nome: "", valor: "", valorTabela: "" }])
     }
     setDialogOpen(true)
   }
@@ -110,6 +112,7 @@ export default function InventarioPage() {
       .map((p) => ({
         nome: p.nome.trim(),
         valor: normalizeCurrencyValue(p.valor),
+        valorTabela: p.valorTabela.trim() ? normalizeCurrencyValue(p.valorTabela) : undefined,
       }))
     if (pavimentosValidos.length === 0) return
 
@@ -124,6 +127,7 @@ export default function InventarioPage() {
                 id: `${imovel.id}-${idx}`,
                 nome: p.nome,
                 valor: p.valor,
+                valorTabela: p.valorTabela,
               })),
             }
           : imovel
@@ -137,6 +141,7 @@ export default function InventarioPage() {
           id: `${newId}-${idx}`,
           nome: p.nome,
           valor: p.valor,
+          valorTabela: p.valorTabela,
         })),
       }
       updatedImoveis = [...imoveis, newImovel]
@@ -147,7 +152,7 @@ export default function InventarioPage() {
     setDialogOpen(false)
     setEditingImovel(null)
     setNomeImovel("")
-    setPavimentosList([{ nome: "", valor: "" }])
+    setPavimentosList([{ nome: "", valor: "", valorTabela: "" }])
   }
 
   const handleDeletePavimento = () => {
@@ -245,6 +250,16 @@ export default function InventarioPage() {
                         }}
                         className="flex-1"
                       />
+                      <Input
+                        placeholder="Valor de Tabela (R$)"
+                        value={pav.valorTabela}
+                        onChange={(e) => {
+                          const next = [...pavimentosList]
+                          next[index].valorTabela = formatCurrencyInput(e.target.value)
+                          setPavimentosList(next)
+                        }}
+                        className="flex-1"
+                      />
                       {pavimentosList.length > 1 && (
                         <Button
                           type="button"
@@ -268,7 +283,7 @@ export default function InventarioPage() {
                           onClick={() =>
                             setPavimentosList((prev) => [
                               ...prev,
-                              { nome: "", valor: "" },
+                              { nome: "", valor: "", valorTabela: "" },
                             ])
                           }
                         >
@@ -309,13 +324,14 @@ export default function InventarioPage() {
                 <TableHead>Imóvel</TableHead>
                 <TableHead>Pavimento</TableHead>
                 <TableHead>Valor</TableHead>
+                <TableHead>Valor de Tabela</TableHead>
                 <TableHead className="w-[100px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {allPavimentos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">
+                  <TableCell colSpan={5} className="text-center">
                     <div className="py-8 text-muted-foreground">
                       Nenhum imóvel cadastrado
                     </div>
@@ -329,6 +345,7 @@ export default function InventarioPage() {
                     </TableCell>
                     <TableCell>{pav.nome}</TableCell>
                     <TableCell>{formatCurrencyValue(pav.valor)}</TableCell>
+                    <TableCell>{pav.valorTabela ? formatCurrencyValue(pav.valorTabela) : "—"}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button
