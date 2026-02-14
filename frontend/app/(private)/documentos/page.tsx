@@ -1285,7 +1285,7 @@ export default function DocumentosPage() {
       </Card>
 
       {/* Diálogo para criar novo modelo */}
-      <AlertDialog open={showNewTemplateDialog} onOpenChange={setShowNewTemplateDialog}>
+      <AlertDialog className="max-w-9xl max-h-[90vh] overflow-y-auto" open={showNewTemplateDialog} onOpenChange={setShowNewTemplateDialog}>
         <AlertDialogContent className="max-w-9xl max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Criar Novo Modelo</AlertDialogTitle>
