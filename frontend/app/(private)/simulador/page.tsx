@@ -1426,7 +1426,7 @@ export default function SimuladorPage() {
                       ) : (
                         <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/20 hover:border-amber-500/40 transition-colors">
                           <span className="text-xs font-medium text-amber-700 dark:text-amber-400 min-w-[120px]">Financiamento</span>
-                          <span className="inline-flex items-center rounded-full bg-amber-500/20 px-1.5 py-0 text-xs font-medium text-amber-700 dark:text-amber-300">420</span>
+                          <span className="inline-flex items-center rounded-full bg-amber-500/20 px-1.5 py-0 text-xs font-medium text-amber-700 dark:text-amber-300">420x</span>
                           <span className="w-32 text-left font-semibold text-xs text-amber-700 dark:text-amber-300">
                             {financiamentoParcelaValue ? formatCurrencyValue(financiamentoParcelaValue) : "a definir"}
                           </span>
@@ -1482,7 +1482,7 @@ export default function SimuladorPage() {
                       <span className="text-xs font-medium text-purple-700 dark:text-purple-400 min-w-[120px]">Intercalada</span>
                       <span className="inline-flex items-center rounded-full bg-purple-500/20 px-1.5 py-0 text-xs font-medium text-purple-700 dark:text-purple-300">{intercaladaInstallments.padStart(3, '0')}×</span>
                       <span className="w-32 text-left font-semibold text-xs text-purple-700 dark:text-purple-300">
-                        {formatCurrencyValue(intercalada)}
+                        {formatCurrencyValue(normalizeCurrencyValue(intercaladaValue))}
                       </span>
                       <span className="w-6" />
                     </div>
