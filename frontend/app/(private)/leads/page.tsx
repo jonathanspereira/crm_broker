@@ -144,7 +144,15 @@ export default function LeadsPage() {
       // Recarregar lista de leads
       await fetchLeads()
 
-      setFormData({ origem: "", name: "", email: "", phone: "" })
+      setFormData({
+        origem: "",
+        name: "",
+        email: "",
+        phone: "",
+        tipoContrato: "",
+        restricao: "nao",
+        fgts: "",
+      })
       setEditingId(null)
       setShowForm(false)
       setShowSaveToast(true)
