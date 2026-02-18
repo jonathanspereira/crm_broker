@@ -71,6 +71,7 @@ type Imovel = {
 
 type Lead = {
   id: string
+  origem?: string
   name: string
   email: string
   phone: string
@@ -91,12 +92,6 @@ const getImoveisFromStorage = (): Imovel[] => {
 const getSimulacoesFromStorage = (): Simulation[] => {
   if (typeof window === "undefined") return []
   const stored = localStorage.getItem(SIMULACOES_STORAGE_KEY)
-  return stored ? JSON.parse(stored) : []
-}
-
-const getLeadsFromStorage = (): Lead[] => {
-  if (typeof window === "undefined") return []
-  const stored = localStorage.getItem(LEADS_STORAGE_KEY)
   return stored ? JSON.parse(stored) : []
 }
 
@@ -133,6 +128,7 @@ export default function SimuladorPage() {
   const [showLeadDropdown, setShowLeadDropdown] = React.useState(false)
   const leadSearchRef = React.useRef<HTMLDivElement>(null)
   const [showNewLeadDialog, setShowNewLeadDialog] = React.useState(false)
+  const [newLeadOrigem, setNewLeadOrigem] = React.useState("")
   const [newLeadName, setNewLeadName] = React.useState("")
   const [newLeadEmail, setNewLeadEmail] = React.useState("")
   const [newLeadPhone, setNewLeadPhone] = React.useState("")
@@ -184,6 +180,17 @@ export default function SimuladorPage() {
   const [financiamentoInstallments, setFinanciamentoInstallments] = React.useState("360")
   const [editingFinanciamento, setEditingFinanciamento] = React.useState(false)
   const [financiamentoParcelaValue, setFinanciamentoParcelaValue] = React.useState("")
+
+  const fetchLeads = React.useCallback(async () => {
+    try {
+      const response = await fetch("/api/leads", { cache: "no-store" })
+      if (!response.ok) throw new Error("Erro ao carregar leads")
+      const data = await response.json()
+      setLeads(data)
+    } catch (error) {
+      console.error("Erro ao carregar leads:", error)
+    }
+  }, [])
   
   React.useEffect(() => {
     // Carregar simulações e empreendimentos do storage
@@ -191,7 +198,7 @@ export default function SimuladorPage() {
     const combinedList = buildEmpreendimentosCombinadosList(imoveis)
     setEmpreendimentosCombinadosList(combinedList)
     setHistory(getSimulacoesFromStorage())
-    setLeads(getLeadsFromStorage())
+    fetchLeads()
     
     // Listener para atualizar empreendimentos quando o inventário mudar
     const handleStorageChange = (e: StorageEvent) => {
@@ -203,14 +210,11 @@ export default function SimuladorPage() {
       if (e.key === SIMULACOES_STORAGE_KEY) {
         setHistory(getSimulacoesFromStorage())
       }
-      if (e.key === LEADS_STORAGE_KEY) {
-        setLeads(getLeadsFromStorage())
-      }
     }
     
     window.addEventListener("storage", handleStorageChange)
     return () => window.removeEventListener("storage", handleStorageChange)
-  }, [])
+  }, [fetchLeads])
 
   React.useEffect(() => {
     if (!showSaveToast) return
@@ -527,35 +531,44 @@ export default function SimuladorPage() {
     setSelectedId((prev) => (prev === id ? null : prev))
   }
 
-  const handleCreateLead = () => {
+  const handleCreateLead = async () => {
     if (!newLeadName.trim() || !newLeadEmail.trim() || !newLeadPhone.trim()) {
       alert("Por favor, preencha todos os campos do lead")
       return
     }
 
-    const newLead: Lead = {
-      id: String(Date.now()),
-      name: newLeadName,
-      email: newLeadEmail,
-      phone: newLeadPhone,
-      status: "novo",
-      createdAt: new Date().toISOString(),
-    }
+    try {
+      const response = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          origem: newLeadOrigem.trim(),
+          name: newLeadName,
+          email: newLeadEmail,
+          phone: newLeadPhone,
+          status: "novo",
+        }),
+      })
 
-    const updated = [newLead, ...leads]
-    setLeads(updated)
-    if (typeof window !== "undefined") {
-      localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(updated))
-    }
+      if (!response.ok) {
+        throw new Error("Erro ao criar lead")
+      }
+
+      const createdLead: Lead = await response.json()
+      setLeads((prev) => [createdLead, ...prev.filter((lead) => lead.id !== createdLead.id)])
 
     // Limpar formulário e fechar diálogo
-    setNewLeadName("")
-    setNewLeadEmail("")
-    setNewLeadPhone("")
-    setShowNewLeadDialog(false)
+      setNewLeadOrigem("")
+      setNewLeadName("")
+      setNewLeadEmail("")
+      setNewLeadPhone("")
+      setShowNewLeadDialog(false)
 
-    // Selecionar o novo lead
-    setSelectedLeadId(newLead.id)
+      setSelectedLeadId(createdLead.id)
+    } catch (error) {
+      console.error("Erro ao criar lead:", error)
+      alert("Erro ao criar lead no Supabase.")
+    }
   }
 
   const handleCreateImovel = () => {
@@ -916,6 +929,15 @@ export default function SimuladorPage() {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
+                    <Label htmlFor="new-lead-origem">Origem</Label>
+                    <Input
+                      id="new-lead-origem"
+                      placeholder="Ex: WhatsApp, Instagram, Indicação"
+                      value={newLeadOrigem}
+                      onChange={(e) => setNewLeadOrigem(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="new-lead-name">Nome do lead</Label>
                     <Input
                       id="new-lead-name"
@@ -944,7 +966,13 @@ export default function SimuladorPage() {
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setShowNewLeadDialog(false)}>
+                  <Button variant="outline" onClick={() => {
+                    setNewLeadOrigem("")
+                    setNewLeadName("")
+                    setNewLeadEmail("")
+                    setNewLeadPhone("")
+                    setShowNewLeadDialog(false)
+                  }}>
                     Cancelar
                   </Button>
                   <Button onClick={handleCreateLead}>

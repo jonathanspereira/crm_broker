@@ -80,6 +80,7 @@ type CustomDocument = {
 
 type Lead = {
   id: string
+  origem?: string
   name: string
   email: string
   phone: string
@@ -89,7 +90,6 @@ type Lead = {
 
 const STORAGE_KEY = "crm_documentos"
 const TEMPLATES_STORAGE_KEY = "crm_templates"
-const LEADS_STORAGE_KEY = "crm_leads"
 
 const DEFAULT_TEMPLATES: DocumentTemplate[] = [
   {
@@ -305,12 +305,24 @@ export default function DocumentosPage() {
   const [templateEditorFontSize, setTemplateEditorFontSize] = React.useState("12pt")
   const templateEditorRef = React.useRef<HTMLDivElement>(null)
   const [showNewLeadDialog, setShowNewLeadDialog] = React.useState(false)
+  const [newLeadOrigem, setNewLeadOrigem] = React.useState("")
   const [newLeadName, setNewLeadName] = React.useState("")
   const [newLeadEmail, setNewLeadEmail] = React.useState("")
   const [newLeadPhone, setNewLeadPhone] = React.useState("")
   const [searchLeadTerm, setSearchLeadTerm] = React.useState("")
   const [showLeadDropdown, setShowLeadDropdown] = React.useState(false)
   const leadSearchRef = React.useRef<HTMLDivElement>(null)
+
+  const fetchLeads = React.useCallback(async () => {
+    try {
+      const response = await fetch("/api/leads", { cache: "no-store" })
+      if (!response.ok) throw new Error("Erro ao carregar leads")
+      const data = await response.json()
+      setLeads(data)
+    } catch (error) {
+      console.error("Erro ao carregar leads:", error)
+    }
+  }, [])
 
   const categories = ["all", ...Array.from(new Set(templates.map(t => t.category)))]
 
@@ -330,14 +342,9 @@ export default function DocumentosPage() {
       if (stored) {
         setCustomDocuments(JSON.parse(stored))
       }
-
-      // Carregar leads
-      const storedLeads = localStorage.getItem(LEADS_STORAGE_KEY)
-      if (storedLeads) {
-        setLeads(JSON.parse(storedLeads))
-      }
     }
-  }, [])
+    fetchLeads()
+  }, [fetchLeads])
 
   React.useEffect(() => {
     if (!showSaveToast) return
@@ -533,35 +540,44 @@ export default function DocumentosPage() {
     templateEditorRef.current?.focus()
   }
 
-  const handleCreateLead = () => {
+  const handleCreateLead = async () => {
     if (!newLeadName.trim() || !newLeadEmail.trim() || !newLeadPhone.trim()) {
       alert("Por favor, preencha todos os campos do lead")
       return
     }
 
-    const newLead: Lead = {
-      id: String(Date.now()),
-      name: newLeadName,
-      email: newLeadEmail,
-      phone: newLeadPhone,
-      status: "novo",
-      createdAt: new Date().toISOString(),
-    }
+    try {
+      const response = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          origem: newLeadOrigem.trim(),
+          name: newLeadName,
+          email: newLeadEmail,
+          phone: newLeadPhone,
+          status: "novo",
+        }),
+      })
 
-    const updated = [newLead, ...leads]
-    setLeads(updated)
-    if (typeof window !== "undefined") {
-      localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(updated))
-    }
+      if (!response.ok) {
+        throw new Error("Erro ao criar lead")
+      }
+
+      const newLead: Lead = await response.json()
+      setLeads((prev) => [newLead, ...prev.filter((lead) => lead.id !== newLead.id)])
 
     // Limpar formulário e fechar diálogo
-    setNewLeadName("")
-    setNewLeadEmail("")
-    setNewLeadPhone("")
-    setShowNewLeadDialog(false)
+      setNewLeadOrigem("")
+      setNewLeadName("")
+      setNewLeadEmail("")
+      setNewLeadPhone("")
+      setShowNewLeadDialog(false)
 
-    // Selecionar o novo lead
-    setSelectedLeadId(newLead.id)
+      setSelectedLeadId(newLead.id)
+    } catch (error) {
+      console.error("Erro ao criar lead:", error)
+      alert("Erro ao criar lead no Supabase.")
+    }
   }
 
   const filteredLeads = leads.filter(lead =>
@@ -1481,6 +1497,15 @@ export default function DocumentosPage() {
           </AlertDialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
+              <Label htmlFor="lead-origin">Origem</Label>
+              <Input
+                id="lead-origin"
+                placeholder="Ex: WhatsApp, Instagram, Indicação"
+                value={newLeadOrigem}
+                onChange={(e) => setNewLeadOrigem(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="lead-name">Nome</Label>
               <Input
                 id="lead-name"
@@ -1511,6 +1536,7 @@ export default function DocumentosPage() {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
+              setNewLeadOrigem("")
               setNewLeadName("")
               setNewLeadEmail("")
               setNewLeadPhone("")
