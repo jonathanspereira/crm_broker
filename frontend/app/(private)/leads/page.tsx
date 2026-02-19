@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 
 type Lead = {
   id: string
@@ -78,7 +79,6 @@ export default function LeadsPage() {
     restricao: "nao",
     fgts: "",
   })
-  const [showSaveToast, setShowSaveToast] = React.useState(false)
 
   // Carregar leads da API
   const fetchLeads = async () => {
@@ -99,12 +99,6 @@ export default function LeadsPage() {
   React.useEffect(() => {
     fetchLeads()
   }, [])
-
-  React.useEffect(() => {
-    if (!showSaveToast) return
-    const timeout = setTimeout(() => setShowSaveToast(false), 2500)
-    return () => clearTimeout(timeout)
-  }, [showSaveToast])
 
   const handleSaveLead = async () => {
     if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim()) {
@@ -155,7 +149,7 @@ export default function LeadsPage() {
       })
       setEditingId(null)
       setShowForm(false)
-      setShowSaveToast(true)
+      toast.success("Lead salvo com sucesso!")
     } catch (error) {
       console.error("Erro ao salvar lead:", error)
       alert("Erro ao salvar lead. Tente novamente.")
@@ -275,6 +269,32 @@ export default function LeadsPage() {
       topOrigem,
     }
   }, [leadsForIndicators])
+
+  const leadsPerMonth = React.useMemo(() => {
+    const monthCount = leads.reduce((acc, lead) => {
+      if (!lead.createdAt) return acc
+      const monthKey = getMonthKey(lead.createdAt)
+      if (!monthKey) return acc
+      acc[monthKey] = (acc[monthKey] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+
+    return Object.entries(monthCount)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-12)
+      .map(([monthKey, total]) => {
+        const [year, month] = monthKey.split("-")
+        const label = new Date(Number(year), Number(month) - 1, 1)
+          .toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
+          .replace(".", "")
+        return { monthKey, label, total }
+      })
+  }, [leads])
+
+  const maxLeadsPerMonth = React.useMemo(() => {
+    if (leadsPerMonth.length === 0) return 1
+    return Math.max(...leadsPerMonth.map((item) => item.total), 1)
+  }, [leadsPerMonth])
 
   const filteredLeads = leads.filter((lead) => {
     const origem = (lead.origem || "").trim()
@@ -445,6 +465,36 @@ export default function LeadsPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Leads por mês</CardTitle>
+              <CardDescription>Últimos 12 meses (geral)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {leadsPerMonth.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sem dados para exibir.</p>
+              ) : (
+                leadsPerMonth.map((item) => {
+                  const percent = Math.round((item.total / maxLeadsPerMonth) * 100)
+                  return (
+                    <div key={item.monthKey} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>{item.label}</span>
+                        <span className="text-muted-foreground">{item.total}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted">
+                        <div
+                          className="h-2 rounded-full bg-primary"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </CardContent>
+          </Card>
           </CardContent>
         )}
       </Card>
@@ -562,7 +612,7 @@ export default function LeadsPage() {
         <CardContent className="pt-6">
           <div className="grid gap-3 md:grid-cols-2">
             <Input
-              placeholder="Buscar por origem, nome, email ou telefone..."
+              placeholder="Buscar por origem, nome ou telefone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="h-9"
@@ -602,7 +652,6 @@ export default function LeadsPage() {
                   <tr className="border-b">
                     <th className="px-6 py-3 text-left text-sm font-semibold">Origem</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold">Nome</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Email</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold">Telefone</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold">Detalhes</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold">Ações</th>
@@ -613,7 +662,6 @@ export default function LeadsPage() {
                     <tr key={lead.id} className="border-b hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-3 text-sm text-muted-foreground">{lead.origem || "—"}</td>
                       <td className="px-6 py-3 text-sm">{lead.name}</td>
-                      <td className="px-6 py-3 text-sm text-muted-foreground">{lead.email}</td>
                       <td className="px-6 py-3 text-sm text-muted-foreground">{lead.phone}</td>
                       <td className="px-6 py-3 text-sm">
                         <div className="flex flex-wrap gap-1">
@@ -688,13 +736,6 @@ export default function LeadsPage() {
         </CardContent>
       </Card>
 
-      {showSaveToast && (
-        <div className="fixed bottom-4 right-4 z-50 rounded-md border bg-background px-4 py-3 text-sm shadow-lg">
-          <div className="font-medium text-green-600">
-            Lead salvo com sucesso!
-          </div>
-        </div>
-      )}
     </div>
   )
 }

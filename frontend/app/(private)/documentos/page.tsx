@@ -60,6 +60,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import { toast } from "sonner"
 
 type DocumentTemplate = {
   id: string
@@ -295,7 +296,6 @@ export default function DocumentosPage() {
   const [documentName, setDocumentName] = React.useState("")
   const [editorContent, setEditorContent] = React.useState("")
   const [filterCategory, setFilterCategory] = React.useState<string>("all")
-  const [showSaveToast, setShowSaveToast] = React.useState(false)
   const [fontSize, setFontSize] = React.useState("13pt")
   const editorRef = React.useRef<HTMLDivElement>(null)
   const [showNewTemplateDialog, setShowNewTemplateDialog] = React.useState(false)
@@ -345,12 +345,6 @@ export default function DocumentosPage() {
     }
     fetchLeads()
   }, [fetchLeads])
-
-  React.useEffect(() => {
-    if (!showSaveToast) return
-    const timeout = setTimeout(() => setShowSaveToast(false), 2500)
-    return () => clearTimeout(timeout)
-  }, [showSaveToast])
 
   React.useEffect(() => {
     const editor = editorRef.current
@@ -431,7 +425,7 @@ export default function DocumentosPage() {
       setSelectedDocumentId(newDoc.id)
     }
     
-    setShowSaveToast(true)
+    toast.success("Documento salvo com sucesso!")
   }
 
   const handleNewDocument = () => {
@@ -1550,13 +1544,6 @@ export default function DocumentosPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {showSaveToast && (
-        <div className="fixed bottom-4 right-4 z-50 rounded-md border bg-background px-4 py-3 text-sm shadow-lg">
-          <div className="font-medium text-green-600">
-            Documento salvo com sucesso!
-          </div>
-        </div>
-      )}
     </div>
   )
 }

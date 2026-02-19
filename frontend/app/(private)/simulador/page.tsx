@@ -119,6 +119,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { toast } from "sonner"
 
 export default function SimuladorPage() {
   const [history, setHistory] = React.useState<Simulation[]>([])
@@ -176,7 +177,6 @@ export default function SimuladorPage() {
   const [entradaTaxaJuros, setEntradaTaxaJuros] = React.useState("")
   const [intercaladaValue, setIntercaladaValue] = React.useState("")
   const [intercaladaInstallments, setIntercaladaInstallments] = React.useState("1")
-  const [showSaveToast, setShowSaveToast] = React.useState(false)
   const [financiamentoInstallments, setFinanciamentoInstallments] = React.useState("360")
   const [editingFinanciamento, setEditingFinanciamento] = React.useState(false)
   const [financiamentoParcelaValue, setFinanciamentoParcelaValue] = React.useState("")
@@ -216,14 +216,6 @@ export default function SimuladorPage() {
     return () => window.removeEventListener("storage", handleStorageChange)
   }, [fetchLeads])
 
-  React.useEffect(() => {
-    if (!showSaveToast) return
-    const timeoutId = window.setTimeout(() => {
-      setShowSaveToast(false)
-    }, 2500)
-    return () => window.clearTimeout(timeoutId)
-  }, [showSaveToast])
-  
   // Helper function to parse currency and calculate installment
   const calculateInstallment = (value: string | number, installments: string, taxaJuros?: string) => {
     const numValue = normalizeCurrencyValue(value)
@@ -486,7 +478,7 @@ export default function SimuladorPage() {
     setHistory(updatedHistory)
     localStorage.setItem(SIMULACOES_STORAGE_KEY, JSON.stringify(updatedHistory))
     setOpenSaveConfirmation(false)
-    setShowSaveToast(true)
+    toast.success("Simulação salva com sucesso!")
   }
 
   const handleClearValues = () => {
@@ -1551,13 +1543,6 @@ export default function SimuladorPage() {
           </CardContent>
         </Card>
       )}
-      {showSaveToast ? (
-        <div className="fixed bottom-4 right-4 z-50 rounded-md border bg-background px-4 py-3 text-sm shadow-lg">
-          <div className="font-medium text-green-600">
-            Simulação salva com sucesso!
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }

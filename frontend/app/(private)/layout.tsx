@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { AppSidebar } from "@/components/app-sidebar"
+import { LeadNotificationBell } from "@/components/lead-notification-bell"
 import { Separator } from "@/components/ui/separator"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
@@ -31,7 +32,10 @@ export default function RootLayout({
               CRM Broker
             </span>
           </div>
-          <ThemeToggle />
+          <div className="ml-auto flex items-center gap-2">
+            <LeadNotificationBell />
+            <ThemeToggle />
+          </div>
         </header>
         <div className="p-4">{children}</div>
       </SidebarInset>
