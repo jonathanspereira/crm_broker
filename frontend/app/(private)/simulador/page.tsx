@@ -43,7 +43,9 @@ type Simulation = {
   proponentes: string
   empreendimento: string
   pavimento: string
+  unidade?: string
   valor: number
+  valorTabela?: number
   financiamentoValue: number
   fgtsValue: number
   subsidioFederalValue: number
@@ -154,6 +156,7 @@ export default function SimuladorPage() {
   const [proponentsList, setProponentsList] = React.useState<string[]>([""])
   const [empreendimento, setEmpreendimento] = React.useState("")
   const [pavimento, setPavimento] = React.useState("")
+  const [unidade, setUnidade] = React.useState("")
   const [valor, setValor] = React.useState("")
   const [valorTabela, setValorTabela] = React.useState<number | undefined>(undefined)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -359,7 +362,9 @@ export default function SimuladorPage() {
                 : "",
               empreendimento: empreendimento.trim(),
               pavimento: pavimento.trim(),
+              unidade: unidade.trim(),
               valor: normalizeCurrencyValue(valor),
+              valorTabela,
             }
           : item
       )
@@ -371,6 +376,7 @@ export default function SimuladorPage() {
       setProponentsList([""])
       setEmpreendimento("")
       setPavimento("")
+      setUnidade("")
       setValor("")
       setSelectedId(null)
       setOpenNewSimulation(false)
@@ -387,7 +393,9 @@ export default function SimuladorPage() {
         : "",
       empreendimento: empreendimento.trim(),
       pavimento: pavimento.trim(),
+      unidade: unidade.trim(),
       valor: normalizeCurrencyValue(valor),
+      valorTabela,
       financiamentoValue: normalizeCurrencyValue(financiamentoValue),
       fgtsValue: normalizeCurrencyValue(fgtsValue),
       subsidioFederalValue: normalizeCurrencyValue(subsidioFederalValue),
@@ -416,6 +424,7 @@ export default function SimuladorPage() {
     setProponentsList([""])
     setEmpreendimento("")
     setPavimento("")
+    setUnidade("")
     setValor("")
     setOpenNewSimulation(false)
   }
@@ -427,7 +436,9 @@ export default function SimuladorPage() {
     setShowLeadDropdown(false)
     setEmpreendimento(simulation.empreendimento)
     setPavimento(simulation.pavimento)
+    setUnidade(simulation.unidade || "")
     setValor(formatCurrencyValue(simulation.valor))
+    setValorTabela(simulation.valorTabela)
     setAtoAuto(simulation.atoAuto ?? false)
 
     const proponents = simulation.proponentes
@@ -444,6 +455,7 @@ export default function SimuladorPage() {
     if (!selectedSimulation) return
     const nextEmpreendimento = empreendimento.trim() || selectedSimulation.empreendimento
     const nextPavimento = pavimento.trim() || selectedSimulation.pavimento
+    const nextUnidade = unidade.trim() || selectedSimulation.unidade || ""
     const nextValor = valor ? normalizeCurrencyValue(valor) : selectedSimulation.valor
     const updatedHistory = history.map((item) =>
       item.id === selectedSimulation.id
@@ -454,7 +466,9 @@ export default function SimuladorPage() {
             proponentes: selectedSimulation.proponentes,
             empreendimento: nextEmpreendimento,
             pavimento: nextPavimento,
+            unidade: nextUnidade,
             valor: nextValor,
+            valorTabela,
             financiamentoValue: normalizeCurrencyValue(financiamentoValue),
             fgtsValue: normalizeCurrencyValue(fgtsValue),
             subsidioFederalValue: normalizeCurrencyValue(subsidioFederalValue),
@@ -509,6 +523,7 @@ export default function SimuladorPage() {
     setProponentsList([""])
     setEmpreendimento("")
     setPavimento("")
+    setUnidade("")
     setValor("")
     setValorTabela(undefined)
     setAtoAuto(true)
@@ -603,6 +618,7 @@ export default function SimuladorPage() {
     if (primeiroPav) {
       setEmpreendimento(newImovel.nome)
       setPavimento(primeiroPav.nome)
+      setUnidade("")
       setValor(formatCurrencyValue(primeiroPav.valor))
       setValorTabela(primeiroPav.valorTabela)
     }
@@ -801,37 +817,45 @@ export default function SimuladorPage() {
                         <PlusIcon className="size-3.5" />
                       </Button>
                     </div>
-                    <Select
-                      value={empreendimento && pavimento ? `${empreendimento}|${pavimento}` : ""}
-                      onValueChange={(value) => {
-                        const selected = empreendimentosCombinadosList.find(
-                          (item) => item.value === value
-                        )
-                        if (selected) {
-                          setEmpreendimento(selected.empreendimento)
-                          setPavimento(selected.pavimento)
-                          setValor(formatCurrencyValue(selected.valor))
-                          setValorTabela(selected.valorTabela)
-                        }
-                      }}
-                    >
-                      <SelectTrigger id="empreendimento">
-                        <SelectValue placeholder="Selecione o empreendimento e pavimento" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {empreendimentosCombinadosList.length === 0 ? (
-                          <div className="p-2 text-sm text-muted-foreground text-center">
-                            Nenhum imóvel cadastrado
-                          </div>
-                        ) : (
-                          empreendimentosCombinadosList.map((item) => (
-                            <SelectItem key={item.value} value={item.value}>
-                              {item.label}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select
+                        value={empreendimento && pavimento ? `${empreendimento}|${pavimento}` : ""}
+                        onValueChange={(value) => {
+                          const selected = empreendimentosCombinadosList.find(
+                            (item) => item.value === value
+                          )
+                          if (selected) {
+                            setEmpreendimento(selected.empreendimento)
+                            setPavimento(selected.pavimento)
+                            setValor(formatCurrencyValue(selected.valor))
+                            setValorTabela(selected.valorTabela)
+                          }
+                        }}
+                      >
+                        <SelectTrigger id="empreendimento" className="flex-1">
+                          <SelectValue placeholder="Selecione o empreendimento e pavimento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {empreendimentosCombinadosList.length === 0 ? (
+                            <div className="p-2 text-sm text-muted-foreground text-center">
+                              Nenhum imóvel cadastrado
+                            </div>
+                          ) : (
+                            empreendimentosCombinadosList.map((item) => (
+                              <SelectItem key={item.value} value={item.value}>
+                                {item.label}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder="Unidade"
+                        className="w-36"
+                        value={unidade}
+                        onChange={(e) => setUnidade(e.target.value)}
+                      />
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
@@ -1146,10 +1170,22 @@ export default function SimuladorPage() {
                 <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <HomeIcon className="size-3.5" />
-                    <span>{selectedSimulation.empreendimento} - {selectedSimulation.pavimento}</span>
+                    <span>
+                      {selectedSimulation.empreendimento} - {selectedSimulation.pavimento}
+                      {selectedSimulation.unidade ? ` | Unidade ${selectedSimulation.unidade}` : ""}
+                    </span>
                   </div>
                   <span>•</span>
-                  <span className="font-medium">{formatCurrencyValue(selectedSimulation.valor) || "—"}</span>
+                  <span
+                    className="font-medium"
+                    title={
+                      selectedSimulation.valorTabela
+                        ? `Valor de tabela: ${formatCurrencyValue(selectedSimulation.valorTabela)}`
+                        : "Valor de tabela não informado"
+                    }
+                  >
+                    {formatCurrencyValue(selectedSimulation.valor) || "—"}
+                  </span>
                 </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
