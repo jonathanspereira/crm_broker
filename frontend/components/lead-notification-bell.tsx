@@ -22,7 +22,8 @@ type LeadNotification = {
 }
 
 const STORAGE_KEY = "crm_seen_lead_notifications"
-const TRACKED_ORIGINS = new Set(["trafego_pago", "trafego_pag", "instagram"])
+const BOOTSTRAP_KEY = "crm_seen_lead_notifications_bootstrap"
+const TRACKED_ORIGINS = new Set(["trafego_pago", "trafego pag", "trafego-pago", "trafego_pag", "instagram"])
 
 const normalizeOrigin = (origin?: string) => (origin || "").trim().toLowerCase()
 
@@ -69,6 +70,22 @@ export function LeadNotificationBell() {
       const currentIds = new Set(eligible.map((lead) => lead.id))
       const previousIds = previousLeadIdsRef.current
       const newlyArrived = eligible.filter((lead) => !previousIds.has(lead.id))
+
+      if (!initializedRef.current) {
+        const isBootstrapped = typeof window !== "undefined" && localStorage.getItem(BOOTSTRAP_KEY) === "1"
+        if (!isBootstrapped) {
+          const nextSeen = getSeenIds()
+          eligible.forEach((lead) => nextSeen.add(lead.id))
+          setSeenIds(nextSeen)
+          if (typeof window !== "undefined") {
+            localStorage.setItem(BOOTSTRAP_KEY, "1")
+          }
+          previousLeadIdsRef.current = new Set<string>()
+          initializedRef.current = true
+          setNewLeads([])
+          return
+        }
+      }
 
       if (initializedRef.current && newlyArrived.length > 0) {
         const label = newlyArrived.length === 1 ? "1 novo lead" : `${newlyArrived.length} novos leads`

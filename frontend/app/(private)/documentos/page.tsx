@@ -22,6 +22,7 @@ import {
 import {
   FileTextIcon,
   PlusIcon,
+  PencilIcon,
   SaveIcon,
   CopyIcon,
   Trash2Icon,
@@ -35,6 +36,8 @@ import {
   AlignRightIcon,
   ListIcon,
   ListOrderedIcon,
+  ImageIcon,
+  TableIcon,
   TypeIcon,
 } from "lucide-react"
 import {
@@ -88,6 +91,8 @@ type Lead = {
   status: "novo" | "qualificado" | "negociacao" | "fechado" | "perdido"
   createdAt: string
 }
+
+type TableEditorKind = "document" | "template"
 
 const STORAGE_KEY = "crm_documentos"
 const TEMPLATES_STORAGE_KEY = "crm_templates"
@@ -299,11 +304,25 @@ export default function DocumentosPage() {
   const [fontSize, setFontSize] = React.useState("13pt")
   const editorRef = React.useRef<HTMLDivElement>(null)
   const [showNewTemplateDialog, setShowNewTemplateDialog] = React.useState(false)
+  const [editingTemplateId, setEditingTemplateId] = React.useState<string | null>(null)
   const [newTemplateName, setNewTemplateName] = React.useState("")
   const [newTemplateCategory, setNewTemplateCategory] = React.useState("")
   const [newTemplateContent, setNewTemplateContent] = React.useState("")
   const [templateEditorFontSize, setTemplateEditorFontSize] = React.useState("12pt")
   const templateEditorRef = React.useRef<HTMLDivElement>(null)
+  const editorSelectionRef = React.useRef<Range | null>(null)
+  const templateSelectionRef = React.useRef<Range | null>(null)
+  const editorImageInputRef = React.useRef<HTMLInputElement>(null)
+  const templateImageInputRef = React.useRef<HTMLInputElement>(null)
+  const activeTableCellRef = React.useRef<HTMLTableCellElement | null>(null)
+  const activeTableEditorRef = React.useRef<HTMLDivElement | null>(null)
+  const [tableUi, setTableUi] = React.useState<{
+    editorKind: TableEditorKind
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   const [showNewLeadDialog, setShowNewLeadDialog] = React.useState(false)
   const [newLeadOrigem, setNewLeadOrigem] = React.useState("")
   const [newLeadName, setNewLeadName] = React.useState("")
@@ -461,33 +480,132 @@ export default function DocumentosPage() {
     }
   }
 
+  const openCreateTemplateDialog = () => {
+    setEditingTemplateId(null)
+    setNewTemplateName("")
+    setNewTemplateCategory("")
+    setNewTemplateContent("")
+    setTemplateEditorFontSize("12pt")
+    setShowNewTemplateDialog(true)
+    window.setTimeout(() => {
+      if (templateEditorRef.current) {
+        templateEditorRef.current.innerHTML = ""
+      }
+    }, 0)
+  }
+
+  const handleEditTemplate = (template: DocumentTemplate) => {
+    setEditingTemplateId(template.id)
+    setNewTemplateName(template.name)
+    setNewTemplateCategory(template.category)
+    setNewTemplateContent(template.content)
+    setTemplateEditorFontSize("12pt")
+    setShowNewTemplateDialog(true)
+    window.setTimeout(() => {
+      if (templateEditorRef.current) {
+        templateEditorRef.current.innerHTML = template.content
+      }
+    }, 0)
+  }
+
+  const runEditorCommand = (
+    editor: HTMLDivElement | null,
+    selectionRef: React.MutableRefObject<Range | null>,
+    command: string,
+    setContent: (value: string) => void
+  ) => {
+    if (!editor) return
+    if (!ensureEditorSelection(editor, selectionRef)) return
+    document.execCommand(command, false)
+    setContent(editor.innerHTML)
+    saveSelection(editor, selectionRef)
+  }
+
+  const insertImageAtSelection = (
+    editor: HTMLDivElement | null,
+    selectionRef: React.MutableRefObject<Range | null>,
+    setContent: (value: string) => void,
+    imageSource: string,
+    altText: string
+  ) => {
+    if (!editor) return
+    if (!ensureEditorSelection(editor, selectionRef)) return
+
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+    const range = selection.getRangeAt(0)
+
+    const image = document.createElement("img")
+    image.src = imageSource
+    image.alt = altText || "Imagem"
+    image.style.maxWidth = "100%"
+    image.style.height = "auto"
+    image.style.display = "block"
+    image.style.margin = "8px 0"
+
+    range.deleteContents()
+    range.insertNode(image)
+
+    const spacer = document.createElement("p")
+    spacer.innerHTML = "<br>"
+    image.after(spacer)
+
+    const newRange = document.createRange()
+    newRange.setStart(spacer, 0)
+    newRange.collapse(true)
+    selection.removeAllRanges()
+    selection.addRange(newRange)
+
+    setContent(editor.innerHTML)
+    saveSelection(editor, selectionRef)
+  }
+
+  const handleInsertImageFromFile = async (
+    file: File,
+    editorKind: TableEditorKind
+  ) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione um arquivo de imagem válido.")
+      return
+    }
+
+    const toDataUrl = () =>
+      new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result || ""))
+        reader.onerror = () => reject(new Error("Falha ao ler imagem"))
+        reader.readAsDataURL(file)
+      })
+
+    try {
+      const dataUrl = await toDataUrl()
+      if (editorKind === "document") {
+        insertImageAtSelection(editorRef.current, editorSelectionRef, setEditorContent, dataUrl, file.name)
+      } else {
+        insertImageAtSelection(templateEditorRef.current, templateSelectionRef, setNewTemplateContent, dataUrl, file.name)
+      }
+    } catch {
+      toast.error("Não foi possível inserir a imagem.")
+    }
+  }
+
   const applyTemplateFormat = (command: string) => {
     const editor = templateEditorRef.current
     if (!editor) return
 
-    editor.focus()
-
-    // Garantir que há uma seleção ou cursor no editor
-    const selection = window.getSelection()
-    if (!selection) return
-
-    // Se não há seleção, criar uma no final do editor
-    if (selection.rangeCount === 0) {
-      const range = document.createRange()
-      range.selectNodeContents(editor)
-      range.collapse(false)
-      selection.removeAllRanges()
-      selection.addRange(range)
+    if (command === "bold") runEditorCommand(editor, templateSelectionRef, "bold", setNewTemplateContent)
+    else if (command === "italic") runEditorCommand(editor, templateSelectionRef, "italic", setNewTemplateContent)
+    else if (command === "underline") runEditorCommand(editor, templateSelectionRef, "underline", setNewTemplateContent)
+    else if (command === "alignLeft") runEditorCommand(editor, templateSelectionRef, "justifyLeft", setNewTemplateContent)
+    else if (command === "alignCenter") runEditorCommand(editor, templateSelectionRef, "justifyCenter", setNewTemplateContent)
+    else if (command === "alignRight") runEditorCommand(editor, templateSelectionRef, "justifyRight", setNewTemplateContent)
+    else if (command === "list") runEditorCommand(editor, templateSelectionRef, "insertUnorderedList", setNewTemplateContent)
+    else if (command === "orderedList") runEditorCommand(editor, templateSelectionRef, "insertOrderedList", setNewTemplateContent)
+    else if (command === "table") {
+      const config = getTableConfig()
+      if (!config) return
+      insertTableAtSelection(editor, templateSelectionRef, setNewTemplateContent, config)
     }
-
-    if (command === "bold") document.execCommand("bold", false)
-    else if (command === "italic") document.execCommand("italic", false)
-    else if (command === "underline") document.execCommand("underline", false)
-    else if (command === "alignLeft") document.execCommand("justifyLeft", false)
-    else if (command === "alignCenter") document.execCommand("justifyCenter", false)
-    else if (command === "alignRight") document.execCommand("justifyRight", false)
-    else if (command === "list") document.execCommand("insertUnorderedList", false)
-    else if (command === "orderedList") document.execCommand("insertOrderedList", false)
   }
 
   const handleCreateTemplate = () => {
@@ -498,18 +616,39 @@ export default function DocumentosPage() {
       return
     }
 
-    const newTemplate: DocumentTemplate = {
-      id: String(Date.now()),
-      name: newTemplateName,
-      category: newTemplateCategory,
-      content: templateEditorRef.current?.innerHTML || newTemplateContent,
+    const templateContent = templateEditorRef.current?.innerHTML || newTemplateContent
+
+    if (editingTemplateId) {
+      const updated = templates.map((template) =>
+        template.id === editingTemplateId
+          ? {
+              ...template,
+              name: newTemplateName,
+              category: newTemplateCategory,
+              content: templateContent,
+            }
+          : template
+      )
+      setTemplates(updated)
+      localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(updated))
+      toast.success("Modelo atualizado com sucesso!")
+    } else {
+      const newTemplate: DocumentTemplate = {
+        id: String(Date.now()),
+        name: newTemplateName,
+        category: newTemplateCategory,
+        content: templateContent,
+      }
+
+      const updated = [...templates, newTemplate]
+      setTemplates(updated)
+      localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(updated))
+      handleTemplateSelect(newTemplate.id)
+      toast.success("Modelo criado com sucesso!")
     }
 
-    const updated = [...templates, newTemplate]
-    setTemplates(updated)
-    localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(updated))
-
     // Limpar formulário e fechar diálogo
+    setEditingTemplateId(null)
     setNewTemplateName("")
     setNewTemplateCategory("")
     setNewTemplateContent("")
@@ -518,9 +657,6 @@ export default function DocumentosPage() {
     }
     setTemplateEditorFontSize("12pt")
     setShowNewTemplateDialog(false)
-
-    // Selecionar o novo template
-    handleTemplateSelect(newTemplate.id)
   }
 
   const applyTemplateFont = (size: string) => {
@@ -620,54 +756,352 @@ export default function DocumentosPage() {
     alert("Conteúdo copiado para a área de transferência!")
   }
 
+  const saveSelection = (editor: HTMLDivElement | null, targetRef: React.MutableRefObject<Range | null>) => {
+    if (!editor) return
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+    const range = selection.getRangeAt(0)
+    if (!editor.contains(range.commonAncestorContainer)) return
+    targetRef.current = range.cloneRange()
+  }
+
+  const ensureEditorSelection = (
+    editor: HTMLDivElement | null,
+    targetRef: React.MutableRefObject<Range | null>
+  ) => {
+    if (!editor) return false
+    editor.focus()
+
+    const selection = window.getSelection()
+    if (!selection) return false
+
+    if (targetRef.current) {
+      selection.removeAllRanges()
+      selection.addRange(targetRef.current)
+      return true
+    }
+
+    const range = document.createRange()
+    range.selectNodeContents(editor)
+    range.collapse(false)
+    selection.removeAllRanges()
+    selection.addRange(range)
+    targetRef.current = range.cloneRange()
+    return true
+  }
+
+  const insertTableAtSelection = (
+    editor: HTMLDivElement | null,
+    targetRef: React.MutableRefObject<Range | null>,
+    setContent: (value: string) => void,
+    config: { rows: number; columns: number; cellWidth: string }
+  ) => {
+    if (!editor) return
+    if (!ensureEditorSelection(editor, targetRef)) return
+
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+    const range = selection.getRangeAt(0)
+
+    const rowsHtml = Array.from({ length: config.rows })
+      .map((_, rowIndex) => {
+        const cols = Array.from({ length: config.columns })
+          .map((__, colIndex) => {
+            const label = rowIndex === 0 ? `Cabeçalho ${colIndex + 1}` : `Linha ${rowIndex + 1} - Coluna ${colIndex + 1}`
+            return `<td style="border:1px solid #d4d4d8; padding:8px; width:${config.cellWidth};">${label}</td>`
+          })
+          .join("")
+        return `<tr>${cols}</tr>`
+      })
+      .join("")
+
+    const template = document.createElement("template")
+    template.innerHTML = `
+      <table style="width:100%; border-collapse:collapse; margin:8px 0; table-layout:fixed;">
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <p><br></p>
+    `
+
+    const fragment = template.content.cloneNode(true) as DocumentFragment
+    range.deleteContents()
+    range.insertNode(fragment)
+    setContent(editor.innerHTML)
+
+    const finalRange = document.createRange()
+    finalRange.selectNodeContents(editor)
+    finalRange.collapse(false)
+    selection.removeAllRanges()
+    selection.addRange(finalRange)
+    targetRef.current = finalRange.cloneRange()
+  }
+
+  const getTableConfig = () => {
+    const rowsInput = window.prompt("Quantidade de linhas da tabela:", "2")
+    if (!rowsInput) return null
+    const columnsInput = window.prompt("Quantidade de colunas da tabela:", "2")
+    if (!columnsInput) return null
+    const cellWidthInput = window.prompt("Largura das células (ex: 180px ou 25%):", "180px")
+    if (!cellWidthInput) return null
+
+    const rows = Number.parseInt(rowsInput, 10)
+    const columns = Number.parseInt(columnsInput, 10)
+    const cellWidth = cellWidthInput.trim()
+
+    if (!Number.isFinite(rows) || rows < 1 || rows > 20) {
+      toast.error("Linhas inválidas. Use um número entre 1 e 20.")
+      return null
+    }
+
+    if (!Number.isFinite(columns) || columns < 1 || columns > 12) {
+      toast.error("Colunas inválidas. Use um número entre 1 e 12.")
+      return null
+    }
+
+    if (!/(px|%)$/.test(cellWidth)) {
+      toast.error("Largura inválida. Use valor terminado em px ou %.")
+      return null
+    }
+
+    return { rows, columns, cellWidth }
+  }
+
+  const syncEditorContent = (editor: HTMLDivElement | null) => {
+    if (!editor) return
+    if (editor === editorRef.current) {
+      setEditorContent(editor.innerHTML)
+      saveSelection(editor, editorSelectionRef)
+    } else if (editor === templateEditorRef.current) {
+      setNewTemplateContent(editor.innerHTML)
+      saveSelection(editor, templateSelectionRef)
+    }
+  }
+
+  const clearTableUi = React.useCallback(() => {
+    activeTableCellRef.current = null
+    activeTableEditorRef.current = null
+    setTableUi(null)
+  }, [])
+
+  const updateTableUiPosition = React.useCallback(() => {
+    const cell = activeTableCellRef.current
+    setTableUi((prev) => {
+      if (!cell || !prev) return null
+      const rect = cell.getBoundingClientRect()
+      return {
+        ...prev,
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      }
+    })
+  }, [])
+
+  const activateTableCell = (
+    cell: HTMLTableCellElement,
+    editorKind: TableEditorKind,
+    editor: HTMLDivElement
+  ) => {
+    activeTableCellRef.current = cell
+    activeTableEditorRef.current = editor
+    const rect = cell.getBoundingClientRect()
+    setTableUi({
+      editorKind,
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    })
+  }
+
+  const handleTableCellSelection = (
+    target: EventTarget | null,
+    editorKind: TableEditorKind,
+    editor: HTMLDivElement | null
+  ) => {
+    if (!editor || !(target instanceof HTMLElement)) return
+    const cell = target.closest("td,th") as HTMLTableCellElement | null
+    if (!cell || !editor.contains(cell)) {
+      clearTableUi()
+      return
+    }
+    activateTableCell(cell, editorKind, editor)
+  }
+
+  const addTableRow = () => {
+    const cell = activeTableCellRef.current
+    const editor = activeTableEditorRef.current
+    if (!cell || !editor) return
+
+    const row = cell.parentElement as HTMLTableRowElement | null
+    const table = cell.closest("table")
+    if (!row || !table) return
+
+    const rowIndex = row.rowIndex
+    const newRow = table.insertRow(rowIndex + 1)
+    const totalColumns = row.cells.length
+
+    for (let index = 0; index < totalColumns; index++) {
+      const sourceCell = row.cells[index] as HTMLTableCellElement | undefined
+      const newCell = newRow.insertCell(index)
+      newCell.innerHTML = `Nova célula ${index + 1}`
+      newCell.style.border = sourceCell?.style.border || "1px solid #d4d4d8"
+      newCell.style.padding = sourceCell?.style.padding || "8px"
+      if (sourceCell?.style.width) newCell.style.width = sourceCell.style.width
+      if (sourceCell?.style.height) newCell.style.height = sourceCell.style.height
+    }
+
+    syncEditorContent(editor)
+    activateTableCell(newRow.cells[0] as HTMLTableCellElement, tableUi?.editorKind || "document", editor)
+  }
+
+  const addTableColumn = () => {
+    const cell = activeTableCellRef.current
+    const editor = activeTableEditorRef.current
+    if (!cell || !editor) return
+
+    const table = cell.closest("table") as HTMLTableElement | null
+    const row = cell.parentElement as HTMLTableRowElement | null
+    if (!table || !row) return
+
+    const columnIndex = Array.from(row.cells).indexOf(cell)
+    if (columnIndex < 0) return
+
+    Array.from(table.rows).forEach((tableRow) => {
+      const sourceCell = tableRow.cells[columnIndex] as HTMLTableCellElement | undefined
+      const inserted = tableRow.insertCell(columnIndex + 1)
+      inserted.innerHTML = "Nova coluna"
+      inserted.style.border = sourceCell?.style.border || "1px solid #d4d4d8"
+      inserted.style.padding = sourceCell?.style.padding || "8px"
+      if (sourceCell?.style.width) inserted.style.width = sourceCell.style.width
+      if (sourceCell?.style.height) inserted.style.height = sourceCell.style.height
+    })
+
+    syncEditorContent(editor)
+    const currentRow = table.rows[row.rowIndex]
+    const insertedCell = currentRow?.cells[columnIndex + 1] as HTMLTableCellElement | undefined
+    if (insertedCell) {
+      activateTableCell(insertedCell, tableUi?.editorKind || "document", editor)
+    }
+  }
+
+  const startResize = (axis: "width" | "height", event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const cell = activeTableCellRef.current
+    const editor = activeTableEditorRef.current
+    if (!cell || !editor) return
+
+    const row = cell.parentElement as HTMLTableRowElement | null
+    const table = cell.closest("table") as HTMLTableElement | null
+    if (!row || !table) return
+
+    const startX = event.clientX
+    const startY = event.clientY
+    const rowIndex = row.rowIndex
+    const columnIndex = Array.from(row.cells).indexOf(cell)
+
+    const columnCells = Array.from(table.rows)
+      .map((tableRow) => tableRow.cells[columnIndex] as HTMLTableCellElement | undefined)
+      .filter((item): item is HTMLTableCellElement => Boolean(item))
+
+    const baseWidths = columnCells.map((tableCell) => tableCell.getBoundingClientRect().width)
+    const rowCells = Array.from(row.cells) as HTMLTableCellElement[]
+    const baseHeights = rowCells.map((tableCell) => tableCell.getBoundingClientRect().height)
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      if (axis === "width") {
+        const deltaX = moveEvent.clientX - startX
+        columnCells.forEach((tableCell, index) => {
+          const nextWidth = Math.max(80, baseWidths[index] + deltaX)
+          tableCell.style.width = `${nextWidth}px`
+        })
+      } else {
+        const deltaY = moveEvent.clientY - startY
+        const currentRow = table.rows[rowIndex]
+        if (!currentRow) return
+        Array.from(currentRow.cells).forEach((tableCell, index) => {
+          const nextHeight = Math.max(36, baseHeights[index] + deltaY)
+          ;(tableCell as HTMLTableCellElement).style.height = `${nextHeight}px`
+        })
+      }
+      updateTableUiPosition()
+    }
+
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove)
+      window.removeEventListener("mouseup", onMouseUp)
+      syncEditorContent(editor)
+      updateTableUiPosition()
+    }
+
+    window.addEventListener("mousemove", onMouseMove)
+    window.addEventListener("mouseup", onMouseUp)
+  }
+
+  React.useEffect(() => {
+    if (!tableUi) return
+    const onWindowUpdate = () => updateTableUiPosition()
+    window.addEventListener("resize", onWindowUpdate)
+    window.addEventListener("scroll", onWindowUpdate, true)
+    return () => {
+      window.removeEventListener("resize", onWindowUpdate)
+      window.removeEventListener("scroll", onWindowUpdate, true)
+    }
+  }, [tableUi, updateTableUiPosition])
+
+  React.useEffect(() => {
+    const onDocumentMouseDown = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target) return
+      if (target.closest("[data-table-tools='true']")) return
+      if (target.closest("td") || target.closest("th")) return
+      clearTableUi()
+    }
+
+    document.addEventListener("mousedown", onDocumentMouseDown)
+    return () => document.removeEventListener("mousedown", onDocumentMouseDown)
+  }, [clearTableUi])
+
   const applyFormat = (formatType: string) => {
     const editor = editorRef.current
     if (!editor) return
 
-    editor.focus()
-
-    // Garantir que há uma seleção ou cursor no editor
-    const selection = window.getSelection()
-    if (!selection) return
-
-    // Se não há seleção, criar uma no final do editor
-    if (selection.rangeCount === 0) {
-      const range = document.createRange()
-      range.selectNodeContents(editor)
-      range.collapse(false)
-      selection.removeAllRanges()
-      selection.addRange(range)
-    }
-
     switch (formatType) {
       case "bold":
-        document.execCommand("bold", false)
+        runEditorCommand(editor, editorSelectionRef, "bold", setEditorContent)
         break
       case "italic":
-        document.execCommand("italic", false)
+        runEditorCommand(editor, editorSelectionRef, "italic", setEditorContent)
         break
       case "underline":
-        document.execCommand("underline", false)
+        runEditorCommand(editor, editorSelectionRef, "underline", setEditorContent)
         break
       case "alignLeft":
-        document.execCommand("justifyLeft", false)
+        runEditorCommand(editor, editorSelectionRef, "justifyLeft", setEditorContent)
         break
       case "alignCenter":
-        document.execCommand("justifyCenter", false)
+        runEditorCommand(editor, editorSelectionRef, "justifyCenter", setEditorContent)
         break
       case "alignRight":
-        document.execCommand("justifyRight", false)
+        runEditorCommand(editor, editorSelectionRef, "justifyRight", setEditorContent)
         break
       case "list":
-        document.execCommand("insertUnorderedList", false)
+        runEditorCommand(editor, editorSelectionRef, "insertUnorderedList", setEditorContent)
         break
       case "orderedList":
-        document.execCommand("insertOrderedList", false)
+        runEditorCommand(editor, editorSelectionRef, "insertOrderedList", setEditorContent)
+        break
+      case "table":
+        {
+          const config = getTableConfig()
+          if (!config) return
+          insertTableAtSelection(editor, editorSelectionRef, setEditorContent, config)
+        }
         break
     }
-
-    // Atualizar o estado com o novo conteúdo
-    setEditorContent(editor.innerHTML)
   }
 
   const applyFontSize = (size: string) => {
@@ -833,7 +1267,7 @@ export default function DocumentosPage() {
                     <Button
                       size="icon"
                       className="h-6 w-6"
-                      onClick={() => setShowNewTemplateDialog(true)}
+                      onClick={openCreateTemplateDialog}
                       title="Adicionar novo modelo"
                     >
                       <PlusIcon className="size-3.5" />
@@ -860,6 +1294,15 @@ export default function DocumentosPage() {
                           <div className="text-xs text-muted-foreground">{template.category}</div>
                         </div>
                       </button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-muted-foreground"
+                        onClick={() => handleEditTemplate(template)}
+                        title="Editar modelo"
+                      >
+                        <PencilIcon className="size-4" />
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
@@ -1153,7 +1596,10 @@ export default function DocumentosPage() {
             <Label htmlFor="editor">Conteúdo</Label>
             
             {/* Barra de Ferramentas de Formatação */}
-            <div className="flex items-center gap-0.5 p-1.5 border rounded-md bg-muted/30">
+            <div
+              className="flex items-center gap-0.5 p-1.5 border rounded-md bg-muted/30"
+              onMouseDown={(event) => event.preventDefault()}
+            >
               <Button
                 type="button"
                 variant="ghost"
@@ -1240,6 +1686,26 @@ export default function DocumentosPage() {
               >
                 <ListOrderedIcon className="size-3" />
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => applyFormat("table")}
+                title="Criar tabela"
+              >
+                <TableIcon className="size-3" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => editorImageInputRef.current?.click()}
+                title="Inserir imagem"
+              >
+                <ImageIcon className="size-3" />
+              </Button>
               
               <div className="w-px h-4 bg-border mx-0.5" />
               
@@ -1262,6 +1728,19 @@ export default function DocumentosPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <input
+                ref={editorImageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0]
+                  if (file) {
+                    await handleInsertImageFromFile(file, "document")
+                  }
+                  event.currentTarget.value = ""
+                }}
+              />
             </div>
             
             <div className="relative">
@@ -1283,24 +1762,84 @@ export default function DocumentosPage() {
                 onInput={(e) => {
                   const content = e.currentTarget.innerHTML
                   setEditorContent(content)
+                  saveSelection(editorRef.current, editorSelectionRef)
                 }}
                 onBlur={(e) => {
                   const content = e.currentTarget.innerHTML
                   setEditorContent(content)
+                  saveSelection(editorRef.current, editorSelectionRef)
                 }}
+                onKeyUp={() => saveSelection(editorRef.current, editorSelectionRef)}
+                onMouseUp={(event) => {
+                  saveSelection(editorRef.current, editorSelectionRef)
+                  handleTableCellSelection(event.target, "document", editorRef.current)
+                }}
+                onClick={(event) => handleTableCellSelection(event.target, "document", editorRef.current)}
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {tableUi && (
+        <div
+          data-table-tools="true"
+          className="fixed z-[70] pointer-events-none"
+          style={{
+            left: tableUi.left,
+            top: tableUi.top,
+            width: tableUi.width,
+            height: tableUi.height,
+          }}
+        >
+          <div className="pointer-events-auto absolute -top-8 right-0 flex items-center gap-1 rounded-md border bg-background p-1 shadow">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-6 px-2 text-[10px]"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={addTableRow}
+            >
+              + linha
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-6 px-2 text-[10px]"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={addTableColumn}
+            >
+              + coluna
+            </Button>
+          </div>
+
+          <button
+            type="button"
+            className="pointer-events-auto absolute -right-1 top-0 h-full w-2 cursor-col-resize rounded bg-primary/40"
+            title="Arraste para ajustar largura"
+            onMouseDown={(event) => startResize("width", event)}
+          />
+
+          <button
+            type="button"
+            className="pointer-events-auto absolute -bottom-1 left-0 h-2 w-full cursor-row-resize rounded bg-primary/40"
+            title="Arraste para ajustar altura"
+            onMouseDown={(event) => startResize("height", event)}
+          />
+        </div>
+      )}
+
       {/* Diálogo para criar novo modelo */}
       <AlertDialog open={showNewTemplateDialog} onOpenChange={setShowNewTemplateDialog}>
         <AlertDialogContent className="min-w-5xl max-w-7xl max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle>Criar Novo Modelo</AlertDialogTitle>
+            <AlertDialogTitle>{editingTemplateId ? "Editar Modelo" : "Criar Novo Modelo"}</AlertDialogTitle>
             <AlertDialogDescription>
-              Preencha os campos abaixo para criar um novo modelo de documento
+              {editingTemplateId
+                ? "Atualize os campos abaixo para editar o modelo"
+                : "Preencha os campos abaixo para criar um novo modelo de documento"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4 py-4">
@@ -1326,7 +1865,10 @@ export default function DocumentosPage() {
               <Label htmlFor="template-editor">Conteúdo do Modelo</Label>
               
               {/* Barra de Ferramentas de Formatação */}
-              <div className="flex items-center gap-0.5 p-1.5 border rounded-md bg-muted/30">
+              <div
+                className="flex items-center gap-0.5 p-1.5 border rounded-md bg-muted/30"
+                onMouseDown={(event) => event.preventDefault()}
+              >
                 <Button
                   type="button"
                   variant="ghost"
@@ -1413,6 +1955,26 @@ export default function DocumentosPage() {
                 >
                   <ListOrderedIcon className="size-3" />
                 </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => applyTemplateFormat("table")}
+                  title="Criar tabela"
+                >
+                  <TableIcon className="size-3" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => templateImageInputRef.current?.click()}
+                  title="Inserir imagem"
+                >
+                  <ImageIcon className="size-3" />
+                </Button>
                 
                 <div className="w-px h-4 bg-border mx-0.5" />
                 
@@ -1435,6 +1997,19 @@ export default function DocumentosPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <input
+                  ref={templateImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0]
+                    if (file) {
+                      await handleInsertImageFromFile(file, "template")
+                    }
+                    event.currentTarget.value = ""
+                  }}
+                />
               </div>
               
               <div className="relative">
@@ -1456,13 +2031,21 @@ export default function DocumentosPage() {
                   onInput={(e) => {
                     const content = e.currentTarget.innerHTML
                     setNewTemplateContent(content)
+                    saveSelection(templateEditorRef.current, templateSelectionRef)
                   }}
+                  onKeyUp={() => saveSelection(templateEditorRef.current, templateSelectionRef)}
+                  onMouseUp={(event) => {
+                    saveSelection(templateEditorRef.current, templateSelectionRef)
+                    handleTableCellSelection(event.target, "template", templateEditorRef.current)
+                  }}
+                  onClick={(event) => handleTableCellSelection(event.target, "template", templateEditorRef.current)}
                 />
               </div>
             </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
+              setEditingTemplateId(null)
               setNewTemplateName("")
               setNewTemplateCategory("")
               setNewTemplateContent("")
@@ -1474,7 +2057,7 @@ export default function DocumentosPage() {
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleCreateTemplate}>
-              Criar Modelo
+              {editingTemplateId ? "Salvar Alterações" : "Criar Modelo"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

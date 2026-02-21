@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog"
 import { formatCurrencyInput, formatCurrencyValue, normalizeCurrencyValue } from "@/lib/utils"
 import { BuildingIcon, EditIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { toast } from "sonner"
 
 type Pavimento = {
   id: string
@@ -71,6 +72,7 @@ const getImoveisFromStorage = (): Imovel[] => {
 
 export default function InventarioPage() {
   const [imoveis, setImoveis] = React.useState<Imovel[]>([])
+  const [loading, setLoading] = React.useState(false)
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [editingImovel, setEditingImovel] = React.useState<Imovel | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<{
@@ -84,6 +86,72 @@ export default function InventarioPage() {
   const [pavimentosList, setPavimentosList] = React.useState<
     Array<{ nome: string; valor: string; valorTabela: string }>
   >([{ nome: "", valor: "", valorTabela: "" }])
+
+  const createImovel = React.useCallback(async (payload: { nome: string; pavimentos: Pavimento[] }) => {
+    const response = await fetch("/api/inventario", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data?.error || "Erro ao criar imóvel")
+    }
+
+    return (await response.json()) as Imovel
+  }, [])
+
+  const updateImovel = React.useCallback(async (payload: { id: string; nome: string; pavimentos: Pavimento[] }) => {
+    const response = await fetch("/api/inventario", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data?.error || "Erro ao atualizar imóvel")
+    }
+
+    return (await response.json()) as Imovel
+  }, [])
+
+  const deleteImovel = React.useCallback(async (id: string) => {
+    const response = await fetch(`/api/inventario?id=${id}`, {
+      method: "DELETE",
+    })
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data?.error || "Erro ao excluir imóvel")
+    }
+  }, [])
+
+  const fetchInventory = React.useCallback(async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/inventario", { cache: "no-store" })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload?.error || "Erro ao carregar inventário")
+      }
+      const data = (await response.json()) as Imovel[]
+      setImoveis(data)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    } catch (error) {
+      console.error("Erro ao carregar inventário:", error)
+      const fallback = getImoveisFromStorage()
+      setImoveis(fallback)
+      toast.error(error instanceof Error ? error.message : "Erro ao carregar inventário")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   const handleOpenDialog = (imovel?: Imovel) => {
     if (imovel) {
@@ -104,7 +172,7 @@ export default function InventarioPage() {
     setDialogOpen(true)
   }
 
-  const handleSaveImovel = () => {
+  const handleSaveImovel = async () => {
     if (!nomeImovel.trim()) return
 
     const pavimentosValidos = pavimentosList
@@ -116,46 +184,48 @@ export default function InventarioPage() {
       }))
     if (pavimentosValidos.length === 0) return
 
-    let updatedImoveis: Imovel[]
-    if (editingImovel) {
-      updatedImoveis = imoveis.map((imovel) =>
-        imovel.id === editingImovel.id
-          ? {
-              ...imovel,
-              nome: nomeImovel.trim(),
-              pavimentos: pavimentosValidos.map((p, idx) => ({
-                id: `${imovel.id}-${idx}`,
-                nome: p.nome,
-                valor: p.valor,
-                valorTabela: p.valorTabela,
-              })),
-            }
-          : imovel
-      )
-    } else {
-      const newId = String(Date.now())
-      const newImovel: Imovel = {
-        id: newId,
-        nome: nomeImovel.trim(),
-        pavimentos: pavimentosValidos.map((p, idx) => ({
-          id: `${newId}-${idx}`,
-          nome: p.nome,
-          valor: p.valor,
-          valorTabela: p.valorTabela,
-        })),
-      }
-      updatedImoveis = [...imoveis, newImovel]
-    }
+    const normalizedPavimentos = pavimentosValidos.map((p, idx) => ({
+      id: editingImovel ? `${editingImovel.id}-${idx}` : `new-${idx}`,
+      nome: p.nome,
+      valor: p.valor,
+      valorTabela: p.valorTabela,
+    }))
 
-    setImoveis(updatedImoveis)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedImoveis))
-    setDialogOpen(false)
-    setEditingImovel(null)
-    setNomeImovel("")
-    setPavimentosList([{ nome: "", valor: "", valorTabela: "" }])
+    try {
+      setLoading(true)
+      if (editingImovel) {
+        const updated = await updateImovel({
+          id: editingImovel.id,
+          nome: nomeImovel.trim(),
+          pavimentos: normalizedPavimentos.map((p, idx) => ({ ...p, id: `${editingImovel.id}-${idx}` })),
+        })
+
+        const merged = imoveis.map((imovel) => (imovel.id === updated.id ? updated : imovel))
+        setImoveis(merged)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
+      } else {
+        const created = await createImovel({
+          nome: nomeImovel.trim(),
+          pavimentos: normalizedPavimentos,
+        })
+        const merged = [...imoveis, created]
+        setImoveis(merged)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
+      }
+      setDialogOpen(false)
+      setEditingImovel(null)
+      setNomeImovel("")
+      setPavimentosList([{ nome: "", valor: "", valorTabela: "" }])
+      toast.success("Inventário salvo com sucesso!")
+    } catch (error) {
+      console.error("Erro ao salvar inventário:", error)
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar inventário")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleDeletePavimento = () => {
+  const handleDeletePavimento = async () => {
     if (!deleteTarget) return
 
     const updatedImoveis = imoveis
@@ -170,9 +240,34 @@ export default function InventarioPage() {
       })
       .filter((imovel) => imovel.pavimentos.length > 0)
 
-    setImoveis(updatedImoveis)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedImoveis))
-    setDeleteTarget(null)
+    try {
+      setLoading(true)
+      const affected = updatedImoveis.find((imovel) => imovel.id === deleteTarget.imovelId)
+
+      if (!affected) {
+        await deleteImovel(deleteTarget.imovelId)
+        const merged = updatedImoveis
+        setImoveis(merged)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
+      } else {
+        const updated = await updateImovel({
+          id: affected.id,
+          nome: affected.nome,
+          pavimentos: affected.pavimentos,
+        })
+
+        const merged = updatedImoveis.map((imovel) => (imovel.id === updated.id ? updated : imovel))
+        setImoveis(merged)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
+      }
+      setDeleteTarget(null)
+      toast.success("Pavimento removido com sucesso!")
+    } catch (error) {
+      console.error("Erro ao remover pavimento:", error)
+      toast.error(error instanceof Error ? error.message : "Erro ao remover pavimento")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const allPavimentos = imoveis.flatMap((imovel) =>
@@ -185,9 +280,8 @@ export default function InventarioPage() {
 
   // Carregar dados do localStorage ao montar o componente
   React.useEffect(() => {
-    const stored = getImoveisFromStorage()
-    setImoveis(stored)
-  }, [])
+    fetchInventory()
+  }, [fetchInventory])
 
   return (
     <div className="space-y-6">
@@ -312,6 +406,8 @@ export default function InventarioPage() {
             <CardTitle>Imóveis cadastrados</CardTitle>
           </div>
           <CardDescription>
+            {loading ? "Sincronizando com banco..." : null}
+            {!loading ? null : " "}
             {allPavimentos.length}{" "}
             {allPavimentos.length === 1 ? "pavimento" : "pavimentos"} em{" "}
             {imoveis.length} {imoveis.length === 1 ? "imóvel" : "imóveis"}
