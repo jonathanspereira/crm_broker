@@ -23,7 +23,7 @@ type LeadNotification = {
 
 const STORAGE_KEY = "crm_seen_lead_notifications"
 const BOOTSTRAP_KEY = "crm_seen_lead_notifications_bootstrap"
-const TRACKED_ORIGINS = new Set(["trafego_pago", "trafego pag", "trafego-pago", "trafego_pag", "instagram"])
+const TRACKED_ORIGINS = new Set(["trafego_pago", "trafego pag", "trafego-pago", "trafego_pag", "instagram", "lista"])
 
 const normalizeOrigin = (origin?: string) => (origin || "").trim().toLowerCase()
 
