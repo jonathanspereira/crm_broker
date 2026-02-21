@@ -1161,7 +1161,7 @@ export default function SimuladorPage() {
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open('https://www8.caixa.gov.br/siopiinternet-web/simulaOperacaoInternet.do?method=inicializarCasoUso', '_blank')}
+                  onClick={() => window.open('https://www.portaldeempreendimentos.caixa.gov.br/simulador/#', '_blank')}
                 >
                   Simular Financiamento
                 </Button>
