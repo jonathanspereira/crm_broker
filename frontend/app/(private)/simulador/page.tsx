@@ -292,7 +292,7 @@ export default function SimuladorPage() {
   
   // Calculate summary values
   const valorImovel = selectedSimulation ? normalizeCurrencyValue(selectedSimulation.valor) : 0
-  const baseImovelValue = valorTabela || normalizeCurrencyValue(valor) || valorImovel
+  const baseImovelValue = normalizeCurrencyValue(valor) || valorImovel
   const financiamento = normalizeCurrencyValue(financiamentoValue)
   const fgts = normalizeCurrencyValue(fgtsValue)
   const subsidioFederal = normalizeCurrencyValue(subsidioFederalValue)
