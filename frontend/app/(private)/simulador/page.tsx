@@ -173,6 +173,7 @@ export default function SimuladorPage() {
   const [atoValue, setAtoValue] = React.useState("")
   const [atoInstallments, setAtoInstallments] = React.useState("1")
   const [atoAuto, setAtoAuto] = React.useState(true)
+  const [residualAuto, setResidualAuto] = React.useState(true)
   const [residualValue, setResidualValue] = React.useState("")
   const [residualInstallments, setResidualInstallments] = React.useState("1")
   const [entradaValue, setEntradaValue] = React.useState("")
@@ -308,6 +309,10 @@ export default function SimuladorPage() {
   const atoPercentLabel = baseImovelValue > 0
     ? atoPercent.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
     : "0,0"
+  const residualPercent = baseImovelValue > 0 ? (residual / baseImovelValue) * 100 : 0
+  const residualPercentLabel = baseImovelValue > 0
+    ? residualPercent.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    : "0,0"
   
   const totalSubsidios = subsidioFederal + subsidioEstadual
   const totalRecursosProprios = ato + residual + entrada + intercalada
@@ -322,6 +327,12 @@ export default function SimuladorPage() {
     const defaultAtoValue = baseImovelValue * 0.025
     setAtoValue(formatCurrencyValue(defaultAtoValue))
   }, [atoAuto, baseImovelValue])
+
+  React.useEffect(() => {
+    if (!residualAuto || baseImovelValue <= 0) return
+    const defaultResidualValue = baseImovelValue * 0.025
+    setResidualValue(formatCurrencyValue(defaultResidualValue))
+  }, [residualAuto, baseImovelValue])
 
   const filteredLeads = leads.filter(lead =>
     lead.name.toLowerCase().includes(searchLeadTerm.toLowerCase()) ||
@@ -458,6 +469,7 @@ export default function SimuladorPage() {
     setValor(formatCurrencyValue(simulation.valor))
     setValorTabela(simulation.valorTabela)
     setAtoAuto(simulation.atoAuto ?? false)
+    setResidualAuto(false)
 
     const proponents = simulation.proponentes
       ? simulation.proponentes.split(",").map((item) => item.trim()).filter(Boolean)
@@ -521,6 +533,7 @@ export default function SimuladorPage() {
     setDescontoValue("")
     setAtoValue("")
     setAtoInstallments("1")
+    setResidualAuto(true)
     setResidualValue("")
     setResidualInstallments("1")
     setEntradaValue("")
@@ -1278,7 +1291,7 @@ export default function SimuladorPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="residual">Residual (sinal)</Label>
+                    <Label htmlFor="residual">Residual (sinal) {residualPercentLabel}%</Label>
                     {calculateInstallment(residualValue, residualInstallments) && (
                       <span className="text-xs text-muted-foreground">
                         {calculateInstallment(residualValue, residualInstallments)}
@@ -1291,7 +1304,10 @@ export default function SimuladorPage() {
                       placeholder="R$ X.XXX" 
                       className="flex-1" 
                       value={residualValue}
-                      onChange={(e) => setResidualValue(formatCurrencyInput(e.target.value))}
+                      onChange={(e) => {
+                        setResidualAuto(false)
+                        setResidualValue(formatCurrencyInput(e.target.value))
+                      }}
                     />
                     <Select value={residualInstallments} onValueChange={setResidualInstallments}>
                       <SelectTrigger className="w-[100px]">
