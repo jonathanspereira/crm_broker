@@ -252,6 +252,24 @@ export default function SimuladorPage() {
   
   const selectedSimulation = history.find((item) => item.id === selectedId)
 
+  const getSimulationValorTabela = React.useCallback(
+    (simulation?: Simulation | null) => {
+      if (!simulation) return undefined
+      if (typeof simulation.valorTabela === "number") return simulation.valorTabela
+
+      const matched = empreendimentosCombinadosList.find(
+        (item) =>
+          item.empreendimento === simulation.empreendimento &&
+          item.pavimento === simulation.pavimento
+      )
+
+      return matched?.valorTabela
+    },
+    [empreendimentosCombinadosList]
+  )
+
+  const simulationValorTabela = getSimulationValorTabela(selectedSimulation)
+
   React.useEffect(() => {
     if (!selectedSimulation) return
     setFinanciamentoValue(formatCurrencyValue(selectedSimulation.financiamentoValue))
@@ -729,7 +747,7 @@ export default function SimuladorPage() {
                   Nova simulação
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent className="w-[95vw] max-w-3xl md:max-w-4xl">
                 <AlertDialogHeader>
                   <AlertDialogTitle>Nova simulação</AlertDialogTitle>
                   <AlertDialogDescription>
@@ -1179,8 +1197,8 @@ export default function SimuladorPage() {
                   <span
                     className="font-medium"
                     title={
-                      selectedSimulation.valorTabela
-                        ? `Valor de tabela: ${formatCurrencyValue(selectedSimulation.valorTabela)}`
+                      simulationValorTabela
+                        ? `Valor de tabela: ${formatCurrencyValue(simulationValorTabela)}`
                         : "Valor de tabela não informado"
                     }
                   >
