@@ -835,41 +835,42 @@ export default function SimuladorPage() {
                         <PlusIcon className="size-3.5" />
                       </Button>
                     </div>
-                    <div className="flex gap-2">
-                      <Select
-                        value={empreendimento && pavimento ? `${empreendimento}|${pavimento}` : ""}
-                        onValueChange={(value) => {
-                          const selected = empreendimentosCombinadosList.find(
-                            (item) => item.value === value
-                          )
-                          if (selected) {
-                            setEmpreendimento(selected.empreendimento)
-                            setPavimento(selected.pavimento)
-                            setValor(formatCurrencyValue(selected.valor))
-                            setValorTabela(selected.valorTabela)
-                          }
-                        }}
-                      >
-                        <SelectTrigger id="empreendimento" className="flex-1">
-                          <SelectValue placeholder="Selecione o empreendimento e pavimento" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {empreendimentosCombinadosList.length === 0 ? (
-                            <div className="p-2 text-sm text-muted-foreground text-center">
-                              Nenhum imóvel cadastrado
-                            </div>
-                          ) : (
-                            empreendimentosCombinadosList.map((item) => (
-                              <SelectItem key={item.value} value={item.value}>
-                                {item.label}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
+                    <Select
+                      value={empreendimento && pavimento ? `${empreendimento}|${pavimento}` : ""}
+                      onValueChange={(value) => {
+                        const selected = empreendimentosCombinadosList.find(
+                          (item) => item.value === value
+                        )
+                        if (selected) {
+                          setEmpreendimento(selected.empreendimento)
+                          setPavimento(selected.pavimento)
+                          setValor(formatCurrencyValue(selected.valor))
+                          setValorTabela(selected.valorTabela)
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="empreendimento" className="flex-1">
+                        <SelectValue placeholder="Selecione o empreendimento e pavimento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {empreendimentosCombinadosList.length === 0 ? (
+                          <div className="p-2 text-sm text-muted-foreground text-center">
+                            Nenhum imóvel cadastrado
+                          </div>
+                        ) : (
+                          empreendimentosCombinadosList.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <div className="space-y-2">
+                      <Label htmlFor="unidade">Unidade</Label>
                       <Input
-                        placeholder="Unidade"
-                        className="w-36"
+                        id="unidade"
+                        placeholder="Ex: 203B"
                         value={unidade}
                         onChange={(e) => setUnidade(e.target.value)}
                       />
