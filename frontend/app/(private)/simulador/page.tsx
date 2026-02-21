@@ -1259,7 +1259,7 @@ export default function SimuladorPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="ato">Ato (Reserva) {atoPercentLabel}%</Label>
+                    <Label htmlFor="ato">Ato (Sinal) {atoPercentLabel}%</Label>
                     {calculateInstallment(atoValue, atoInstallments) && (
                       <span className="text-xs text-muted-foreground">
                         {calculateInstallment(atoValue, atoInstallments)}
@@ -1291,7 +1291,7 @@ export default function SimuladorPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="residual">Residual (sinal) {residualPercentLabel}%</Label>
+                    <Label htmlFor="residual">Residual (Reserva) {residualPercentLabel}%</Label>
                     {calculateInstallment(residualValue, residualInstallments) && (
                       <span className="text-xs text-muted-foreground">
                         {calculateInstallment(residualValue, residualInstallments)}
@@ -1537,7 +1537,7 @@ export default function SimuladorPage() {
                   
                   {ato > 0 && (
                     <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-green-500/10 to-green-500/5 border border-green-500/20 hover:border-green-500/40 transition-colors">
-                      <span className="text-xs font-medium text-green-700 dark:text-green-400 min-w-[120px]">Ato (Reserva)</span>
+                      <span className="text-xs font-medium text-green-700 dark:text-green-400 min-w-[120px]">Ato (Sinal)</span>
                       <span className="inline-flex items-center rounded-full bg-green-500/20 px-1.5 py-0 text-xs font-medium text-green-700 dark:text-green-300">{atoInstallments.padStart(3, '0')}×</span>
                       <span className="w-32 text-left font-semibold text-xs text-green-700 dark:text-green-300">
                         {formatCurrencyValue(ato / parseInt(atoInstallments || "1"))}
@@ -1548,7 +1548,7 @@ export default function SimuladorPage() {
                   
                   {residual > 0 && (
                     <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-rose-500/10 to-rose-500/5 border border-rose-500/20 hover:border-rose-500/40 transition-colors">
-                      <span className="text-xs font-medium text-rose-700 dark:text-rose-400 min-w-[120px]">Residual (Sinal)</span>
+                      <span className="text-xs font-medium text-rose-700 dark:text-rose-400 min-w-[120px]">Residual (Reserva)</span>
                       <span className="inline-flex items-center rounded-full bg-rose-500/20 px-1.5 py-0 text-xs font-medium text-rose-700 dark:text-rose-300">{residualInstallments.padStart(3, '0')}×</span>
                       <span className="w-32 text-left font-semibold text-xs text-rose-700 dark:text-rose-300">
                         {formatCurrencyValue(residual / parseInt(residualInstallments || "1"))}
